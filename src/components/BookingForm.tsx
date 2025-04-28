@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, FormProvider, type SubmitHandler } from "react-hook-form";
 import * as z from "zod";
-import { motion } from "framer-motion"; // Removed AnimatePresence as it's not used directly here
+import { motion } from "framer-motion";
 
 import { CarTypeSelection } from "./steps/CarTypeSelection";
 import { CarModelSelection } from "./steps/CarModelSelection";
@@ -44,8 +44,8 @@ const bookingSchema = z.object({
 export type BookingFormData = z.infer<typeof bookingSchema>;
 
 const steps = [
-  { id: 'carType', component: CarTypeSelection, validationFields: ['carType'] },
-  { id: 'carModel', component: CarModelSelection, validationFields: ['carModel'] },
+  { id: 'carType', component: CarTypeSelection, validationFields: ['carType'], autoAdvance: true }, // Auto advance on selection
+  { id: 'carModel', component: CarModelSelection, validationFields: ['carModel'], autoAdvance: true }, // Auto advance on selection
   { id: 'passengers', component: PassengerSelection, validationFields: ['passengers', 'bags'] },
   { id: 'location', component: LocationSelection, validationFields: ['pickupLocation', 'dropoffLocation'] },
   { id: 'userDetails', component: UserDetails, validationFields: ['fullName', 'phoneNumber'] },
@@ -131,7 +131,9 @@ const BookingForm: FC = () => {
          Bags: ${data.bags}
          -----------------------------
          Pickup Location: ${data.pickupLocation.address}
+         ${data.pickupLocation.coordinates ? `(Lat: ${data.pickupLocation.coordinates.latitude}, Lng: ${data.pickupLocation.coordinates.longitude})` : ''}
          Dropoff Location: ${data.dropoffLocation.address}
+         ${data.dropoffLocation.coordinates ? `(Lat: ${data.dropoffLocation.coordinates.latitude}, Lng: ${data.dropoffLocation.coordinates.longitude})` : ''}
          -----------------------------
          Client Name: ${data.fullName}
          Client Phone: ${data.phoneNumber}
@@ -169,6 +171,7 @@ const BookingForm: FC = () => {
   };
 
   const CurrentComponent = steps[currentStep].component;
+  const shouldAutoAdvance = steps[currentStep].autoAdvance;
   const progressPercentage = ((currentStep + 1) / steps.length) * 100;
 
   return (
@@ -179,21 +182,24 @@ const BookingForm: FC = () => {
         aria-live="polite" // Improve accessibility for screen readers
         noValidate // Disable native browser validation
       >
-         <Progress value={progressPercentage} className="w-full mb-6 h-2 bg-white/20 [&>div]:bg-primary" />
+         <Progress value={progressPercentage} className="w-full mb-6 h-2 bg-white/20 dark:bg-black/20 [&>div]:bg-primary" />
 
-          <motion.div // Use motion.div directly if needed for single step animation
+          <motion.div
             key={currentStep}
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
           >
-            {/* Pass form state errors to the component if needed */}
-            <CurrentComponent errors={errors} />
+             {/* Pass handleNext only to components that should auto-advance */}
+            <CurrentComponent
+              errors={errors}
+              {...(shouldAutoAdvance && { onNext: handleNext })}
+             />
           </motion.div>
 
 
-        <div className="flex justify-between mt-8 pt-4 border-t border-white/20">
+        <div className="flex justify-between mt-8 pt-4 border-t border-white/20 dark:border-black/20">
           <Button
             type="button"
             onClick={handlePrevious}
@@ -204,7 +210,19 @@ const BookingForm: FC = () => {
             Previous
           </Button>
 
-          {currentStep === steps.length - 1 ? (
+          {/* Hide Next button for auto-advancing steps */}
+          {!shouldAutoAdvance && currentStep !== steps.length - 1 && (
+             <Button
+               type="button"
+               onClick={handleNext}
+               className="glass-button bg-accent/80 hover:bg-accent text-accent-foreground"
+               aria-label="Next Step"
+             >
+               Next
+             </Button>
+           )}
+
+          {currentStep === steps.length - 1 && (
             <Button
               type="submit"
               disabled={isSubmitting}
@@ -212,15 +230,6 @@ const BookingForm: FC = () => {
               aria-label="Confirm and Send via WhatsApp"
             >
               {isSubmitting ? "Processing..." : "Confirm & Send via WhatsApp"}
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              onClick={handleNext}
-              className="glass-button bg-accent/80 hover:bg-accent text-accent-foreground"
-              aria-label="Next Step"
-            >
-              Next
             </Button>
           )}
         </div>

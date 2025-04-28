@@ -35,13 +35,24 @@ const allCarModels: CarModelOption[] = [
   { value: 'chrysler-pacifica', label: 'Chrysler Pacifica', imageUrl: 'https://picsum.photos/seed/pacifica/300/200', type: '7seater' },
 ];
 
-export const CarModelSelection: FC = () => {
-  const { register, watch, setValue, formState: { errors } } = useFormContext<BookingFormData>();
+interface CarModelSelectionProps {
+  errors?: any; // Optional errors prop
+  onNext?: () => Promise<void> | void; // Optional prop for auto-advancing
+}
+
+export const CarModelSelection: FC<CarModelSelectionProps> = ({ errors, onNext }) => {
+  const { register, watch, setValue, formState } = useFormContext<BookingFormData>(); // Destructure errors from formState if needed directly here
   const selectedCarType = watch('carType');
   const selectedCarModel = watch('carModel');
 
-  const handleSelect = (value: string) => {
-    setValue('carModel', value, { shouldValidate: true });
+  const handleSelect = async (value: string) => {
+    setValue('carModel', value, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+    // If onNext prop is provided, call it to potentially advance the step
+    if (onNext) {
+      // Add a small delay to allow state update and validation if needed
+      await new Promise(resolve => setTimeout(resolve, 50));
+      await onNext();
+    }
   };
 
   // Filter models based on the selected car type
@@ -59,19 +70,28 @@ export const CarModelSelection: FC = () => {
 
     if (availableModels.length === 0) {
       // Automatically set a default value if no specific models are available for the type
-      // This happens if a type is selected but no models are defined for it.
+      const defaultModelValue = `${selectedCarType}-default`;
        React.useEffect(() => {
-         setValue('carModel', `${selectedCarType}-default`, { shouldValidate: true });
-       }, [selectedCarType, setValue]);
+         setValue('carModel', defaultModelValue, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+         // Auto-advance if possible when a default is set
+          const tryAutoAdvance = async () => {
+              if (onNext) {
+                  await new Promise(resolve => setTimeout(resolve, 50)); // Ensure state update
+                  await onNext();
+              }
+          }
+          tryAutoAdvance();
+
+       }, [selectedCarType, setValue, onNext, defaultModelValue]);
 
       return (
          <div className="space-y-4 text-center">
            <Label className="text-xl font-semibold text-foreground">Car Model</Label>
            <p className="text-muted-foreground">Standard model for {selectedCarType} will be assigned.</p>
-            <input type="hidden" {...register('carModel')} value={`${selectedCarType}-default`} />
+            <input type="hidden" {...register('carModel')} value={defaultModelValue} />
             {/* Display the error if the hidden input doesn't satisfy validation */}
-             {errors.carModel && (
-                <p className="text-sm font-medium text-destructive mt-2">{errors.carModel.message}</p>
+             {formState.errors.carModel && ( // Access errors via formState
+                <p className="text-sm font-medium text-destructive mt-2">{formState.errors.carModel.message}</p>
             )}
          </div>
        );
@@ -92,8 +112,8 @@ export const CarModelSelection: FC = () => {
             <Card
               className={cn(
                 'glass-card cursor-pointer transition-all duration-200 ease-in-out overflow-hidden',
-                selectedCarModel === model.value ? 'ring-2 ring-primary ring-offset-2 ring-offset-background/50' : 'ring-0',
-                errors.carModel ? 'border-destructive' : 'border-white/20 dark:border-black/20'
+                selectedCarModel === model.value ? 'ring-2 ring-primary ring-offset-2 ring-offset-background/50 dark:ring-offset-black/50' : 'ring-0', // Adjusted ring offset for dark mode
+                formState.errors.carModel ? 'border-destructive' : 'border-white/20 dark:border-black/20' // Access errors via formState
               )}
               onClick={() => handleSelect(model.value)}
               role="radio"
@@ -126,11 +146,9 @@ export const CarModelSelection: FC = () => {
           </motion.div>
         ))}
       </div>
-      {errors.carModel && (
-        <p className="text-sm font-medium text-destructive mt-2">{errors.carModel.message}</p>
+      {formState.errors.carModel && ( // Access errors via formState
+        <p className="text-sm font-medium text-destructive mt-2">{formState.errors.carModel.message}</p>
       )}
     </div>
   );
 };
-
-    

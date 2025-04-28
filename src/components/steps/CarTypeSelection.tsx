@@ -23,17 +23,28 @@ const carTypes: CarTypeOption[] = [
   { value: '7seater', label: '7-Seater', imageUrl: 'https://picsum.photos/seed/7seater/300/200' },
 ];
 
-export const CarTypeSelection: FC<{ errors: any }> = ({ errors }) => { // Added errors prop
+interface CarTypeSelectionProps {
+  errors: any;
+  onNext?: () => Promise<void> | void; // Optional prop for auto-advancing
+}
+
+export const CarTypeSelection: FC<CarTypeSelectionProps> = ({ errors, onNext }) => {
   const { register, watch, setValue, resetField } = useFormContext<BookingFormData>();
   const selectedCarType = watch('carType');
 
-  const handleSelect = (value: string) => {
+  const handleSelect = async (value: string) => {
     setValue('carType', value, { shouldValidate: true });
     // Reset car model when type changes
     resetField('carModel', { defaultValue: '' });
      // Ensure validation is triggered for carModel if it becomes required
+     // Add a small delay to ensure state updates before validation/next step
+     await new Promise(resolve => setTimeout(resolve, 0));
      setValue('carModel', '', { shouldValidate: true });
 
+     // If onNext prop is provided, call it to potentially advance the step
+     if (onNext) {
+       await onNext();
+     }
   };
 
   return (
@@ -50,7 +61,7 @@ export const CarTypeSelection: FC<{ errors: any }> = ({ errors }) => { // Added 
             <Card
               className={cn(
                 'glass-card cursor-pointer transition-all duration-200 ease-in-out overflow-hidden',
-                selectedCarType === car.value ? 'ring-2 ring-primary ring-offset-2 ring-offset-background/50' : 'ring-0',
+                selectedCarType === car.value ? 'ring-2 ring-primary ring-offset-2 ring-offset-background/50 dark:ring-offset-black/50' : 'ring-0', // Adjusted ring offset for dark mode
                  errors?.carType ? 'border-destructive' : 'border-white/20 dark:border-black/20' // Use errors prop
               )}
               onClick={() => handleSelect(car.value)}
@@ -91,5 +102,3 @@ export const CarTypeSelection: FC<{ errors: any }> = ({ errors }) => { // Added 
     </div>
   );
 };
-
-    
