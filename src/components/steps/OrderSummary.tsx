@@ -7,7 +7,8 @@ import { motion } from 'framer-motion';
 import { Car, Users, Luggage, MapPin, User, Phone } from 'lucide-react';
 import type { BookingFormData } from '../BookingForm';
 
-export const OrderSummary: FC = () => {
+// Added errors prop, though it's not used in this component currently
+export const OrderSummary: FC<{ errors?: any }> = () => {
   const { getValues } = useFormContext<BookingFormData>();
   const formData = getValues();
 
@@ -26,7 +27,7 @@ export const OrderSummary: FC = () => {
 
   const summaryItems = [
     { icon: Car, label: "Car Type", value: formData.carType || "Not selected" },
-    ...(formData.carModel ? [{ icon: Car, label: "Model", value: formData.carModel }] : []), // Conditionally add model
+    { icon: Car, label: "Model", value: formData.carModel || "Not selected" }, // Updated to show selected model
     { icon: Users, label: "Passengers", value: formData.passengers },
     { icon: Luggage, label: "Bags", value: formData.bags },
     { icon: MapPin, label: "Pickup", value: formData.pickupLocation?.address || "Not set" },
@@ -57,10 +58,13 @@ export const OrderSummary: FC = () => {
                <item.icon className="w-4 h-4 mr-2 text-primary flex-shrink-0" />
                {item.label}:
              </span>
-             <span className="text-right text-foreground font-semibold ml-2 break-words">{item.value}</span>
+             {/* Ensure value is displayed, handle potential undefined/null */}
+             <span className="text-right text-foreground font-semibold ml-2 break-words">{String(item.value ?? 'N/A')}</span>
            </motion.div>
          ))}
       </motion.div>
     </div>
   );
 };
+
+    

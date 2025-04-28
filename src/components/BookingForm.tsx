@@ -21,7 +21,7 @@ import { sendMessageToWhatsapp } from '@/services/whatsapp'; // Import the servi
 
 const bookingSchema = z.object({
   carType: z.string().min(1, "Please select a car type"),
-  carModel: z.string().optional(), // Optional for now, make required later if needed
+  carModel: z.string().min(1,"Please select a car model"), // Made required
   passengers: z.coerce.number().min(1, "At least 1 passenger").max(7, "Maximum 7 passengers"),
   bags: z.coerce.number().min(0, "Cannot have negative bags").max(5, "Maximum 5 bags"), // Allow 0 bags
   pickupLocation: z.object({
@@ -30,14 +30,14 @@ const bookingSchema = z.object({
       latitude: z.number(),
       longitude: z.number(),
     }).optional(),
-  }).optional(),
+  }).refine(val => val?.address, { message: "Pickup location is required" }), // Ensure address is provided
   dropoffLocation: z.object({
     address: z.string().min(1, "Please select a dropoff location"),
     coordinates: z.object({
       latitude: z.number(),
       longitude: z.number(),
     }).optional(),
-  }).optional(),
+   }).refine(val => val?.address, { message: "Dropoff location is required" }), // Ensure address is provided
   fullName: z.string().min(2, "Please enter your full name"),
   phoneNumber: z.string().min(10, "Please enter a valid phone number"),
 });
@@ -63,28 +63,35 @@ const BookingForm: FC = () => {
     defaultValues: {
       passengers: 1,
       bags: 1,
-      // Initialize locations properly if needed
       pickupLocation: { address: '', coordinates: undefined },
       dropoffLocation: { address: '', coordinates: undefined },
+      fullName: '',
+      phoneNumber: '',
+      carType: '',
+      carModel: '',
     },
   });
 
-  const { handleSubmit, trigger, formState: { errors, isValid, isSubmitting } } = methods;
+  const { handleSubmit, trigger, formState: { errors, isSubmitting } } = methods;
 
   const handleNext = async () => {
     const fieldsToValidate = steps[currentStep].validationFields as (keyof BookingFormData)[];
-    const isValidStep = await trigger(fieldsToValidate);
+    // Trigger validation only for the fields relevant to the current step
+    const isValidStep = await trigger(fieldsToValidate.length > 0 ? fieldsToValidate : undefined, { shouldFocus: true });
+
 
     if (isValidStep) {
        if (currentStep < steps.length - 1) {
          setCurrentStep(currentStep + 1);
        }
     } else {
-       // Optionally show a toast or highlight errors
        console.log("Step validation failed", errors);
+        // Find the first error message for the current step
+        const firstErrorField = fieldsToValidate.find(field => errors[field]);
+        const errorMessage = firstErrorField ? errors[firstErrorField]?.message : "Please fill in all required fields correctly.";
         toast({
             title: "Validation Error",
-            description: "Please fill in all required fields correctly.",
+            description: typeof errorMessage === 'string' ? errorMessage : "Please check the highlighted fields.",
             variant: "destructive",
         });
     }
@@ -97,16 +104,33 @@ const BookingForm: FC = () => {
   };
 
   const onSubmit: SubmitHandler<BookingFormData> = async (data) => {
+     // Final validation before submitting
+     const isValidForm = await trigger(); // Validate all fields
+     if (!isValidForm) {
+         toast({
+             title: "Incomplete Form",
+             description: "Please review the form for errors before submitting.",
+             variant: "destructive",
+         });
+         // Optionally navigate back to the first step with an error
+          const firstErrorStep = steps.findIndex(step => step.validationFields.some(field => errors[field as keyof BookingFormData]));
+          if (firstErrorStep !== -1 && firstErrorStep < currentStep) {
+              setCurrentStep(firstErrorStep);
+          }
+         return;
+     }
+
+
     console.log("Booking Submitted:", data);
      try {
        const message = `
          New ClearRide Booking:
          Car Type: ${data.carType}
-         Model: ${data.carModel || 'Not specified'}
+         Model: ${data.carModel}
          Passengers: ${data.passengers}
          Bags: ${data.bags}
-         From: ${data.pickupLocation?.address || 'Not specified'}
-         To: ${data.dropoffLocation?.address || 'Not specified'}
+         From: ${data.pickupLocation.address}
+         To: ${data.dropoffLocation.address}
          Name: ${data.fullName}
          Phone: ${data.phoneNumber}
        `;
@@ -139,6 +163,7 @@ const BookingForm: FC = () => {
         onSubmit={handleSubmit(onSubmit)}
         className="glass-card space-y-8 p-6 sm:p-8"
         aria-live="polite" // Improve accessibility for screen readers
+        noValidate // Disable native browser validation
       >
          <Progress value={progressPercentage} className="w-full mb-6 h-2 bg-white/20 [&>div]:bg-primary" />
 
@@ -150,7 +175,8 @@ const BookingForm: FC = () => {
             exit={{ opacity: 0, x: -50 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
           >
-            <CurrentComponent />
+            {/* Pass form state errors to the component if needed */}
+            <CurrentComponent errors={errors} />
           </motion.div>
         </AnimatePresence>
 
@@ -178,8 +204,6 @@ const BookingForm: FC = () => {
             <Button
               type="button"
               onClick={handleNext}
-               // Disable next if current step fields are invalid, more proactive validation
-              // disabled={!isValid && steps[currentStep].validationFields.some(field => errors[field as keyof BookingFormData])}
               className="glass-button bg-accent/80 hover:bg-accent text-accent-foreground"
               aria-label="Next Step"
             >
@@ -187,13 +211,15 @@ const BookingForm: FC = () => {
             </Button>
           )}
         </div>
-          {/* Display general form errors if any */}
-         {/* {Object.keys(errors).length > 0 && currentStep === steps.length - 1 && ( // Only show general errors on the last step before submission
-           <p className="text-red-500 text-sm mt-4 text-center">Please review the form for errors.</p>
-         )} */}
+         {/* Display errors related to the current step for debugging */}
+         {/* {steps[currentStep].validationFields.map(field => errors[field as keyof BookingFormData] && (
+           <p key={field} className="text-red-500 text-sm mt-1">{errors[field as keyof BookingFormData]?.message?.toString()}</p>
+         ))} */}
       </form>
     </FormProvider>
   );
 };
 
 export default BookingForm;
+
+    

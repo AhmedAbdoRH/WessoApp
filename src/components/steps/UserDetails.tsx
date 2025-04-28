@@ -7,9 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { User, Phone } from 'lucide-react';
 import type { BookingFormData } from '../BookingForm';
+import { cn } from '@/lib/utils';
 
-export const UserDetails: FC = () => {
-  const { register, formState: { errors } } = useFormContext<BookingFormData>();
+export const UserDetails: FC<{ errors: any }> = ({ errors }) => { // Added errors prop
+  const { register } = useFormContext<BookingFormData>();
 
   return (
     <div className="space-y-6">
@@ -17,37 +18,37 @@ export const UserDetails: FC = () => {
        <p className="text-sm text-muted-foreground mb-6">Please provide your contact information.</p>
 
       <div className="space-y-4">
-        <div>
+        <div className="relative"> {/* Added relative positioning */}
           <Label htmlFor="fullName" className="text-sm font-medium text-foreground flex items-center mb-1">
              <User className="w-4 h-4 mr-2 text-primary" /> Full Name
            </Label>
+            <User className="w-4 h-4 text-muted-foreground absolute left-3 top-[2.3rem] transform -translate-y-1/2 pointer-events-none z-10"/> {/* Icon positioned absolutely */}
            <Input
              id="fullName"
              {...register('fullName')}
              placeholder="Enter your full name"
-             className="glass-input pl-10" // Add padding for icon
-             aria-invalid={errors.fullName ? "true" : "false"}
+             className={cn("glass-input pl-10", errors?.fullName ? "border-destructive" : "")} // Use errors prop and add padding for icon
+             aria-invalid={errors?.fullName ? "true" : "false"}
            />
-            <User className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none" style={{ top: 'calc(50% + 1rem)'}}/> {/* Adjust positioning slightly */}
-          {errors.fullName && (
+          {errors?.fullName && ( // Use errors prop
             <p className="text-sm font-medium text-destructive mt-1">{errors.fullName.message}</p>
           )}
         </div>
 
-        <div>
+        <div className="relative"> {/* Added relative positioning */}
            <Label htmlFor="phoneNumber" className="text-sm font-medium text-foreground flex items-center mb-1">
              <Phone className="w-4 h-4 mr-2 text-primary" /> Phone Number
            </Label>
+             <Phone className="w-4 h-4 text-muted-foreground absolute left-3 top-[2.3rem] transform -translate-y-1/2 pointer-events-none z-10"/> {/* Icon positioned absolutely */}
            <Input
              id="phoneNumber"
              type="tel" // Use tel type for better mobile UX
              {...register('phoneNumber')}
              placeholder="Enter your phone number"
-             className="glass-input pl-10" // Add padding for icon
-             aria-invalid={errors.phoneNumber ? "true" : "false"}
+             className={cn("glass-input pl-10", errors?.phoneNumber ? "border-destructive" : "")} // Use errors prop and add padding for icon
+             aria-invalid={errors?.phoneNumber ? "true" : "false"}
            />
-            <Phone className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none" style={{ top: 'calc(50% + 1rem)'}}/> {/* Adjust positioning slightly */}
-          {errors.phoneNumber && (
+          {errors?.phoneNumber && ( // Use errors prop
             <p className="text-sm font-medium text-destructive mt-1">{errors.phoneNumber.message}</p>
           )}
         </div>
@@ -55,3 +56,5 @@ export const UserDetails: FC = () => {
     </div>
   );
 };
+
+    

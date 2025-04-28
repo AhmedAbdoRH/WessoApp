@@ -11,7 +11,7 @@ import type { BookingFormData } from '../BookingForm';
 const passengerOptions = [1, 2, 3, 4];
 const bagOptions = [0, 1, 2, 3]; // Updated to include 0 bags
 
-// Custom Glass Radio Item component
+// Custom Glass Radio Item component - Not currently used directly, but shows concept
 const GlassRadioItem: FC<{ value: string | number; id: string }> = ({ value, id, ...props }) => (
    <button
      type="button" // Important: Prevent form submission
@@ -30,8 +30,8 @@ const GlassRadioItem: FC<{ value: string | number; id: string }> = ({ value, id,
  );
 
 
-export const PassengerSelection: FC = () => {
-  const { control, formState: { errors } } = useFormContext<BookingFormData>();
+export const PassengerSelection: FC<{ errors: any }> = ({ errors }) => { // Added errors prop
+  const { control } = useFormContext<BookingFormData>();
 
   return (
     <div className="space-y-8">
@@ -48,7 +48,7 @@ export const PassengerSelection: FC = () => {
               className="flex flex-wrap gap-4"
             >
               {passengerOptions.map((num) => (
-                <div key={`passenger-${num}`} className="flex items-center space-x-2">
+                <div key={`passenger-${num}`} className="flex items-center space-x-2 relative"> {/* Added relative positioning */}
                    {/* Use button for custom styling */}
                     <button
                       type="button"
@@ -56,20 +56,21 @@ export const PassengerSelection: FC = () => {
                       aria-checked={field.value === num}
                       onClick={() => field.onChange(num)}
                       className={cn(
-                        'glass-radio',
+                        'glass-radio relative flex items-center justify-center', // Added flex centering
                         field.value === num ? 'bg-primary border-primary' : 'bg-white/20 dark:bg-black/20 border-white/50 dark:border-black/50'
                       )}
+                      aria-labelledby={`passenger-label-${num}`}
                     >
                          {/* Optional: Inner circle for checked state */}
-                         {field.value === num && <div className="w-2 h-2 bg-primary-foreground rounded-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>}
+                         {field.value === num && <div className="w-2 h-2 bg-primary-foreground rounded-full"></div>}
                     </button>
-                  <Label htmlFor={`passenger-${num}`} className="glass-radio-label">{num} Passenger{num > 1 ? 's' : ''}</Label>
+                  <Label id={`passenger-label-${num}`} htmlFor={`passenger-${num}`} className="glass-radio-label">{num} Passenger{num > 1 ? 's' : ''}</Label>
                 </div>
               ))}
             </RadioGroup>
           )}
         />
-        {errors.passengers && (
+        {errors?.passengers && ( // Use errors prop
           <p className="text-sm font-medium text-destructive mt-2">{errors.passengers.message}</p>
         )}
       </div>
@@ -87,29 +88,32 @@ export const PassengerSelection: FC = () => {
                className="flex flex-wrap gap-4"
              >
                {bagOptions.map((num) => (
-                 <div key={`bag-${num}`} className="flex items-center space-x-2">
+                 <div key={`bag-${num}`} className="flex items-center space-x-2 relative"> {/* Added relative positioning */}
                    <button
                      type="button"
                      role="radio"
                      aria-checked={field.value === num}
                      onClick={() => field.onChange(num)}
                      className={cn(
-                       'glass-radio',
+                       'glass-radio relative flex items-center justify-center', // Added flex centering
                        field.value === num ? 'bg-primary border-primary' : 'bg-white/20 dark:bg-black/20 border-white/50 dark:border-black/50'
                      )}
+                     aria-labelledby={`bag-label-${num}`}
                    >
-                      {field.value === num && <div className="w-2 h-2 bg-primary-foreground rounded-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>}
+                      {field.value === num && <div className="w-2 h-2 bg-primary-foreground rounded-full"></div>}
                    </button>
-                   <Label htmlFor={`bag-${num}`} className="glass-radio-label">{num} Bag{num !== 1 ? 's' : ''}</Label>
+                   <Label id={`bag-label-${num}`} htmlFor={`bag-${num}`} className="glass-radio-label">{num} Bag{num !== 1 ? 's' : ''}</Label>
                  </div>
                ))}
              </RadioGroup>
           )}
         />
-        {errors.bags && (
+        {errors?.bags && ( // Use errors prop
           <p className="text-sm font-medium text-destructive mt-2">{errors.bags.message}</p>
         )}
       </div>
     </div>
   );
 };
+
+    

@@ -13,17 +13,21 @@ import type { BookingFormData } from '../BookingForm';
 // IMPORTANT: Replace with your actual Google Maps API Key
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY; // Store in .env.local
 
-export const LocationSelection: FC = () => {
-  const { control, formState: { errors }, setValue } = useFormContext<BookingFormData>();
+export const LocationSelection: FC<{ errors: any }> = ({ errors }) => { // Receive errors prop
+  const { control, setValue } = useFormContext<BookingFormData>();
 
   // Placeholder function for handling map clicks or search results
   const handleLocationSelect = (type: 'pickup' | 'dropoff', address: string) => {
-     // In a real app, you'd use geocoding here
+     // In a real app, you'd use geocoding here to get actual coordinates
      console.log(`Selected ${type}: ${address}`);
+     // Use dummy coordinates for now
+     const dummyCoordinates = { latitude: 34.0522, longitude: -118.2437 };
+
      if (type === 'pickup') {
-       setValue('pickupLocation', { address, coordinates: { latitude: 34.0522, longitude: -118.2437 } }, { shouldValidate: true }); // Dummy coords
+       // Update both address and coordinates
+       setValue('pickupLocation', { address: address, coordinates: dummyCoordinates }, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
      } else {
-       setValue('dropoffLocation', { address, coordinates: { latitude: 34.0522, longitude: -118.2437 } }, { shouldValidate: true }); // Dummy coords
+        setValue('dropoffLocation', { address: address, coordinates: dummyCoordinates }, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
      }
    };
 
@@ -61,27 +65,28 @@ export const LocationSelection: FC = () => {
              <MapPin className="w-4 h-4 mr-2 text-primary" /> Pickup Location
            </Label>
            <Controller
-             name="pickupLocation.address"
+             name="pickupLocation.address" // Control the address field
              control={control}
+             rules={{ required: 'Pickup location is required' }} // Add basic required rule if needed
              render={({ field }) => (
                <Input
                  id="pickupLocation"
-                 {...field}
+                 {...field} // Spread field props (onChange, onBlur, value, name, ref)
                  placeholder="Enter pickup address"
-                 className="glass-input"
-                 onChange={(e) => {
-                   field.onChange(e);
-                   // Optionally trigger search or suggestions here
-                 }}
+                 className={cn("glass-input", errors?.pickupLocation?.address ? "border-destructive" : "")}
+                 // Optionally call handleLocationSelect on blur or debounce
+                 onBlur={() => handleLocationSelect('pickup', field.value)}
+                 aria-invalid={errors?.pickupLocation?.address ? "true" : "false"}
                />
              )}
            />
-           {errors.pickupLocation?.address && (
+           {errors?.pickupLocation?.address && (
              <p className="text-sm font-medium text-destructive mt-1">{errors.pickupLocation.address.message}</p>
            )}
-             {/* Hidden inputs for coordinates if needed */}
-             {/* <input type="hidden" {...register('pickupLocation.coordinates.latitude')} />
-             <input type="hidden" {...register('pickupLocation.coordinates.longitude')} /> */}
+            {/* Display coordinate errors if they exist (though they are optional in schema) */}
+           {errors?.pickupLocation?.coordinates && (
+             <p className="text-sm font-medium text-destructive mt-1">Invalid coordinates for pickup.</p>
+           )}
          </div>
 
          <div>
@@ -89,30 +94,33 @@ export const LocationSelection: FC = () => {
              <MapPin className="w-4 h-4 mr-2 text-accent" /> Dropoff Location
            </Label>
            <Controller
-             name="dropoffLocation.address"
+             name="dropoffLocation.address" // Control the address field
              control={control}
+             rules={{ required: 'Dropoff location is required' }} // Add basic required rule if needed
              render={({ field }) => (
                <Input
                  id="dropoffLocation"
-                 {...field}
+                  {...field} // Spread field props
                  placeholder="Enter dropoff address"
-                 className="glass-input"
-                 onChange={(e) => {
-                   field.onChange(e);
-                   // Optionally trigger search or suggestions here
-                 }}
+                  className={cn("glass-input", errors?.dropoffLocation?.address ? "border-destructive" : "")}
+                 // Optionally call handleLocationSelect on blur or debounce
+                  onBlur={() => handleLocationSelect('dropoff', field.value)}
+                  aria-invalid={errors?.dropoffLocation?.address ? "true" : "false"}
                />
              )}
            />
-           {errors.dropoffLocation?.address && (
+           {errors?.dropoffLocation?.address && (
              <p className="text-sm font-medium text-destructive mt-1">{errors.dropoffLocation.address.message}</p>
            )}
-            {/* Hidden inputs for coordinates if needed */}
-             {/* <input type="hidden" {...register('dropoffLocation.coordinates.latitude')} />
-             <input type="hidden" {...register('dropoffLocation.coordinates.longitude')} /> */}
+            {/* Display coordinate errors if they exist */}
+            {errors?.dropoffLocation?.coordinates && (
+             <p className="text-sm font-medium text-destructive mt-1">Invalid coordinates for dropoff.</p>
+           )}
          </div>
       </div>
 
     </div>
   );
 };
+
+    
