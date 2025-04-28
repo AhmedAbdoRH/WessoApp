@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { MapPin } from 'lucide-react';
 import type { BookingFormData } from '../BookingForm';
+import { cn } from '@/lib/utils'; // Import the cn utility function
 // Import Google Maps components if API key is available
 // import { APIProvider, Map, Marker } from '@vis.gl/react-google-maps';
 
@@ -122,5 +123,3 @@ export const LocationSelection: FC<{ errors: any }> = ({ errors }) => { // Recei
     </div>
   );
 };
-
-    
