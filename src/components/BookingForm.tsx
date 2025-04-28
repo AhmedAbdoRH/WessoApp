@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, FormProvider, type SubmitHandler } from "react-hook-form";
 import * as z from "zod";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion"; // Removed AnimatePresence as it's not used directly here
 
 import { CarTypeSelection } from "./steps/CarTypeSelection";
 import { CarModelSelection } from "./steps/CarModelSelection";
@@ -16,8 +16,7 @@ import { OrderSummary } from "./steps/OrderSummary";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import type { Location } from '@/services/location';
-import { sendMessageToWhatsapp } from '@/services/whatsapp'; // Import the service
+// import { sendMessageToWhatsapp } from '@/services/whatsapp'; // No longer needed for client-side redirect
 
 const bookingSchema = z.object({
   carType: z.string().min(1, "Please select a car type"),
@@ -120,35 +119,50 @@ const BookingForm: FC = () => {
          return;
      }
 
-
-    console.log("Booking Submitted:", data);
+     console.log("Booking Submitted:", data);
      try {
+       // Format the message for WhatsApp
        const message = `
-         New ClearRide Booking:
+         New ClearRide Booking Request:
+         -----------------------------
          Car Type: ${data.carType}
-         Model: ${data.carModel}
+         Car Model: ${data.carModel}
          Passengers: ${data.passengers}
          Bags: ${data.bags}
-         From: ${data.pickupLocation.address}
-         To: ${data.dropoffLocation.address}
-         Name: ${data.fullName}
-         Phone: ${data.phoneNumber}
-       `;
-       // Replace with the actual target WhatsApp number
-       const targetPhoneNumber = "+1234567890"; // IMPORTANT: Use a real number with country code
-       await sendMessageToWhatsapp(targetPhoneNumber, message);
+         -----------------------------
+         Pickup Location: ${data.pickupLocation.address}
+         Dropoff Location: ${data.dropoffLocation.address}
+         -----------------------------
+         Client Name: ${data.fullName}
+         Client Phone: ${data.phoneNumber}
+         -----------------------------
+         Please confirm these details or let us know if you need any changes.
+       `.trim().replace(/\n\s+/g, '\n'); // Clean up extra whitespace
+
+       const encodedMessage = encodeURIComponent(message);
+       // IMPORTANT: Use the target phone number provided by the user
+       const targetPhoneNumber = "201100434503"; // User's requested number, ensure format is correct (no + needed for wa.me)
+       const whatsappUrl = `https://wa.me/${targetPhoneNumber}?text=${encodedMessage}`;
+
        toast({
-         title: "Booking Successful!",
-         description: "Your ride request has been sent.",
+         title: "Booking Ready!",
+         description: "Redirecting to WhatsApp to send your booking request...",
        });
-       // Optionally reset form or redirect
-       // methods.reset();
-       // setCurrentStep(0);
+
+       // Redirect the user to WhatsApp
+       window.location.href = whatsappUrl;
+
+       // Optionally reset form after a delay or based on some condition
+       // setTimeout(() => {
+       //   methods.reset();
+       //   setCurrentStep(0);
+       // }, 3000); // Reset after 3 seconds
+
      } catch (error) {
-       console.error("Error sending WhatsApp message:", error);
+       console.error("Error preparing WhatsApp redirect:", error);
        toast({
          title: "Submission Error",
-         description: "Could not send your booking request. Please try again.",
+         description: "Could not prepare your booking request for WhatsApp. Please try again.",
          variant: "destructive",
        });
      }
@@ -167,8 +181,7 @@ const BookingForm: FC = () => {
       >
          <Progress value={progressPercentage} className="w-full mb-6 h-2 bg-white/20 [&>div]:bg-primary" />
 
-        <AnimatePresence mode="wait">
-          <motion.div
+          <motion.div // Use motion.div directly if needed for single step animation
             key={currentStep}
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
@@ -178,7 +191,7 @@ const BookingForm: FC = () => {
             {/* Pass form state errors to the component if needed */}
             <CurrentComponent errors={errors} />
           </motion.div>
-        </AnimatePresence>
+
 
         <div className="flex justify-between mt-8 pt-4 border-t border-white/20">
           <Button
@@ -196,9 +209,9 @@ const BookingForm: FC = () => {
               type="submit"
               disabled={isSubmitting}
               className="glass-button bg-primary/80 hover:bg-primary text-primary-foreground px-6 py-3 text-lg font-semibold shadow-lg hover:shadow-xl active:scale-95"
-              aria-label="Complete Booking"
+              aria-label="Confirm and Send via WhatsApp"
             >
-              {isSubmitting ? "Sending..." : "Complete Booking"}
+              {isSubmitting ? "Processing..." : "Confirm & Send via WhatsApp"}
             </Button>
           ) : (
             <Button
@@ -221,5 +234,3 @@ const BookingForm: FC = () => {
 };
 
 export default BookingForm;
-
-    
