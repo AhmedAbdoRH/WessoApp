@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { FC } from 'react';
@@ -24,19 +25,19 @@ const bookingSchema = z.object({
   passengers: z.coerce.number().min(1, "At least 1 passenger").max(7, "Maximum 7 passengers"),
   bags: z.coerce.number().min(0, "Cannot have negative bags").max(5, "Maximum 5 bags"), // Allow 0 bags
   pickupLocation: z.object({
-    address: z.string().min(1, "Please select a pickup location"),
+    address: z.string().min(1, "Please provide a pickup address"),
     coordinates: z.object({
-      latitude: z.number(),
-      longitude: z.number(),
+      latitude: z.number().optional(), // Coordinates are optional but preferred
+      longitude: z.number().optional(),
     }).optional(),
-  }).refine(val => val?.address, { message: "Pickup location is required" }), // Ensure address is provided
+  }).refine(val => val?.address, { message: "Pickup location address is required" }), // Ensure address is provided
   dropoffLocation: z.object({
-    address: z.string().min(1, "Please select a dropoff location"),
+    address: z.string().min(1, "Please provide a dropoff address"),
     coordinates: z.object({
-      latitude: z.number(),
-      longitude: z.number(),
+      latitude: z.number().optional(), // Coordinates are optional but preferred
+      longitude: z.number().optional(),
     }).optional(),
-   }).refine(val => val?.address, { message: "Dropoff location is required" }), // Ensure address is provided
+   }).refine(val => val?.address, { message: "Dropoff location address is required" }), // Ensure address is provided
   fullName: z.string().min(2, "Please enter your full name"),
   phoneNumber: z.string().min(10, "Please enter a valid phone number"),
 });
@@ -47,7 +48,7 @@ const steps = [
   { id: 'carType', component: CarTypeSelection, validationFields: ['carType'], autoAdvance: true }, // Auto advance on selection
   { id: 'carModel', component: CarModelSelection, validationFields: ['carModel'], autoAdvance: true }, // Auto advance on selection
   { id: 'passengers', component: PassengerSelection, validationFields: ['passengers', 'bags'] },
-  { id: 'location', component: LocationSelection, validationFields: ['pickupLocation', 'dropoffLocation'] },
+  { id: 'location', component: LocationSelection, validationFields: ['pickupLocation.address', 'dropoffLocation.address', 'pickupLocation.coordinates', 'dropoffLocation.coordinates'] }, // Validate address and potentially coordinates
   { id: 'userDetails', component: UserDetails, validationFields: ['fullName', 'phoneNumber'] },
   { id: 'summary', component: OrderSummary, validationFields: [] }, // No validation needed for summary
 ];
@@ -62,8 +63,8 @@ const BookingForm: FC = () => {
     defaultValues: {
       passengers: 1,
       bags: 1,
-      pickupLocation: { address: '', coordinates: undefined },
-      dropoffLocation: { address: '', coordinates: undefined },
+      pickupLocation: { address: '', coordinates: { latitude: undefined, longitude: undefined } },
+      dropoffLocation: { address: '', coordinates: { latitude: undefined, longitude: undefined } },
       fullName: '',
       phoneNumber: '',
       carType: '',
@@ -74,7 +75,7 @@ const BookingForm: FC = () => {
   const { handleSubmit, trigger, formState: { errors, isSubmitting } } = methods;
 
   const handleNext = async () => {
-    const fieldsToValidate = steps[currentStep].validationFields as (keyof BookingFormData)[];
+    const fieldsToValidate = steps[currentStep].validationFields as (keyof BookingFormData | `pickupLocation.${keyof BookingFormData['pickupLocation']}` | `dropoffLocation.${keyof BookingFormData['dropoffLocation']}`)[];
     // Trigger validation only for the fields relevant to the current step
     const isValidStep = await trigger(fieldsToValidate.length > 0 ? fieldsToValidate : undefined, { shouldFocus: true });
 
@@ -86,11 +87,33 @@ const BookingForm: FC = () => {
     } else {
        console.log("Step validation failed", errors);
         // Find the first error message for the current step
-        const firstErrorField = fieldsToValidate.find(field => errors[field]);
-        const errorMessage = firstErrorField ? errors[firstErrorField]?.message : "Please fill in all required fields correctly.";
+        const firstErrorField = fieldsToValidate.find(field => {
+            // Handle nested fields like pickupLocation.address
+            const parts = field.split('.');
+            let errorObj: any = errors;
+            for (const part of parts) {
+                if (!errorObj) return false;
+                errorObj = errorObj[part];
+            }
+            return !!errorObj;
+        });
+
+        let errorMessage = "Please fill in all required fields correctly.";
+        if (firstErrorField) {
+             const parts = firstErrorField.split('.');
+             let errorObj: any = errors;
+             for (const part of parts) {
+                 if (!errorObj) break;
+                 errorObj = errorObj[part];
+             }
+             if (errorObj && errorObj.message) {
+                 errorMessage = typeof errorObj.message === 'string' ? errorObj.message : "Please check the highlighted fields.";
+             }
+        }
+
         toast({
             title: "Validation Error",
-            description: typeof errorMessage === 'string' ? errorMessage : "Please check the highlighted fields.",
+            description: errorMessage,
             variant: "destructive",
         });
     }
@@ -102,6 +125,14 @@ const BookingForm: FC = () => {
     }
   };
 
+   // Function to generate Google Maps link
+   const getGoogleMapsLink = (coords?: { latitude?: number; longitude?: number }): string | null => {
+     if (coords && coords.latitude && coords.longitude) {
+       return `https://www.google.com/maps?q=${coords.latitude},${coords.longitude}`;
+     }
+     return null;
+   };
+
   const onSubmit: SubmitHandler<BookingFormData> = async (data) => {
      // Final validation before submitting
      const isValidForm = await trigger(); // Validate all fields
@@ -112,7 +143,15 @@ const BookingForm: FC = () => {
              variant: "destructive",
          });
          // Optionally navigate back to the first step with an error
-          const firstErrorStep = steps.findIndex(step => step.validationFields.some(field => errors[field as keyof BookingFormData]));
+          const firstErrorStep = steps.findIndex(step => step.validationFields.some(field => {
+                const parts = field.split('.');
+                let errorObj: any = errors;
+                for (const part of parts) {
+                    if (!errorObj) return false;
+                    errorObj = errorObj[part];
+                }
+                return !!errorObj;
+            }));
           if (firstErrorStep !== -1 && firstErrorStep < currentStep) {
               setCurrentStep(firstErrorStep);
           }
@@ -121,6 +160,9 @@ const BookingForm: FC = () => {
 
      console.log("Booking Submitted:", data);
      try {
+        const pickupLink = getGoogleMapsLink(data.pickupLocation.coordinates);
+        const dropoffLink = getGoogleMapsLink(data.dropoffLocation.coordinates);
+
        // Format the message for WhatsApp
        const message = `
          New ClearRide Booking Request:
@@ -131,9 +173,10 @@ const BookingForm: FC = () => {
          Bags: ${data.bags}
          -----------------------------
          Pickup Location: ${data.pickupLocation.address}
-         ${data.pickupLocation.coordinates ? `(Lat: ${data.pickupLocation.coordinates.latitude}, Lng: ${data.pickupLocation.coordinates.longitude})` : ''}
+         ${pickupLink ? `Map: ${pickupLink}` : '(Coordinates not available)'}
+
          Dropoff Location: ${data.dropoffLocation.address}
-         ${data.dropoffLocation.coordinates ? `(Lat: ${data.dropoffLocation.coordinates.latitude}, Lng: ${data.dropoffLocation.coordinates.longitude})` : ''}
+          ${dropoffLink ? `Map: ${dropoffLink}` : '(Coordinates not available)'}
          -----------------------------
          Client Name: ${data.fullName}
          Client Phone: ${data.phoneNumber}
@@ -143,7 +186,7 @@ const BookingForm: FC = () => {
 
        const encodedMessage = encodeURIComponent(message);
        // IMPORTANT: Use the target phone number provided by the user
-       const targetPhoneNumber = "201100434503"; // User's requested number, ensure format is correct (no + needed for wa.me)
+       const targetPhoneNumber = "201100434503"; // User's requested number
        const whatsappUrl = `https://wa.me/${targetPhoneNumber}?text=${encodedMessage}`;
 
        toast({
@@ -171,7 +214,7 @@ const BookingForm: FC = () => {
   };
 
   const CurrentComponent = steps[currentStep].component;
-  const shouldAutoAdvance = steps[currentStep].autoAdvance;
+  const shouldAutoAdvance = steps[currentStep].autoAdvance && currentStep < steps.length - 1; // Prevent auto-advance from summary
   const progressPercentage = ((currentStep + 1) / steps.length) * 100;
 
   return (
@@ -186,9 +229,9 @@ const BookingForm: FC = () => {
 
           <motion.div
             key={currentStep}
-            initial={{ opacity: 0, x: 50 }}
+            initial={{ opacity: 0, x: currentStep > 0 ? 50 : -50 }} // Animate from right if moving forward, left if backward
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -50 }}
+            exit={{ opacity: 0, x: -50 }} // Always exit to left
             transition={{ duration: 0.3, ease: "easeInOut" }}
           >
              {/* Pass handleNext only to components that should auto-advance */}
@@ -210,7 +253,7 @@ const BookingForm: FC = () => {
             Previous
           </Button>
 
-          {/* Hide Next button for auto-advancing steps */}
+          {/* Hide Next button for auto-advancing steps AND the summary step */}
           {!shouldAutoAdvance && currentStep !== steps.length - 1 && (
              <Button
                type="button"
@@ -233,10 +276,8 @@ const BookingForm: FC = () => {
             </Button>
           )}
         </div>
-         {/* Display errors related to the current step for debugging */}
-         {/* {steps[currentStep].validationFields.map(field => errors[field as keyof BookingFormData] && (
-           <p key={field} className="text-red-500 text-sm mt-1">{errors[field as keyof BookingFormData]?.message?.toString()}</p>
-         ))} */}
+         {/* Optional: Display all current errors for debugging */}
+         {/* <pre className="text-xs text-destructive">{JSON.stringify(errors, null, 2)}</pre> */}
       </form>
     </FormProvider>
   );

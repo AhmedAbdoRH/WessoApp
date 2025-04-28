@@ -1,16 +1,29 @@
+
 "use client";
 
 import type { FC } from 'react';
 import React from 'react';
 import { useFormContext } from 'react-hook-form';
 import { motion } from 'framer-motion';
-import { Car, Users, Luggage, MapPin, User, Phone } from 'lucide-react';
+import { Car, Users, Luggage, MapPin, User, Phone, ExternalLink } from 'lucide-react';
 import type { BookingFormData } from '../BookingForm';
+import { Button } from '@/components/ui/button'; // Import Button for link
+
+// Helper function to generate Google Maps link
+const getGoogleMapsLink = (coords?: { latitude?: number; longitude?: number }): string | null => {
+  if (coords?.latitude && coords?.longitude) {
+    return `https://www.google.com/maps?q=${coords.latitude},${coords.longitude}`;
+  }
+  return null;
+};
 
 // Added errors prop, though it's not used in this component currently
 export const OrderSummary: FC<{ errors?: any }> = () => {
   const { getValues } = useFormContext<BookingFormData>();
   const formData = getValues();
+
+  const pickupLink = getGoogleMapsLink(formData.pickupLocation?.coordinates);
+  const dropoffLink = getGoogleMapsLink(formData.dropoffLocation?.coordinates);
 
   const summaryItemVariants = {
     hidden: { opacity: 0, y: 10 },
@@ -25,13 +38,24 @@ export const OrderSummary: FC<{ errors?: any }> = () => {
     })
   };
 
+  // Structure items for better rendering logic
   const summaryItems = [
     { icon: Car, label: "Car Type", value: formData.carType || "Not selected" },
-    { icon: Car, label: "Model", value: formData.carModel || "Not selected" }, // Updated to show selected model
+    { icon: Car, label: "Model", value: formData.carModel || "Not selected" },
     { icon: Users, label: "Passengers", value: formData.passengers },
     { icon: Luggage, label: "Bags", value: formData.bags },
-    { icon: MapPin, label: "Pickup", value: formData.pickupLocation?.address || "Not set" },
-    { icon: MapPin, label: "Dropoff", value: formData.dropoffLocation?.address || "Not set" },
+    {
+      icon: MapPin,
+      label: "Pickup",
+      value: formData.pickupLocation?.address || "Not set",
+      link: pickupLink
+    },
+    {
+      icon: MapPin,
+      label: "Dropoff",
+      value: formData.dropoffLocation?.address || "Not set",
+      link: dropoffLink
+    },
     { icon: User, label: "Name", value: formData.fullName },
     { icon: Phone, label: "Phone", value: formData.phoneNumber },
   ];
@@ -50,21 +74,32 @@ export const OrderSummary: FC<{ errors?: any }> = () => {
          {summaryItems.map((item, index) => (
            <motion.div
              key={item.label}
-             className="flex items-start justify-between text-sm py-2 border-b border-white/10 dark:border-black/10 last:border-b-0"
+             className="flex items-start justify-between text-sm py-2 border-b border-white/10 dark:border-black/10 last:border-b-0 gap-2" // Added gap
              variants={summaryItemVariants}
              custom={index} // Pass index for staggered delay
            >
-             <span className="flex items-center font-medium text-muted-foreground">
+             <span className="flex items-center font-medium text-muted-foreground flex-shrink-0"> {/* Prevent shrinking */}
                <item.icon className="w-4 h-4 mr-2 text-primary flex-shrink-0" />
                {item.label}:
              </span>
-             {/* Ensure value is displayed, handle potential undefined/null */}
-             <span className="text-right text-foreground font-semibold ml-2 break-words">{String(item.value ?? 'N/A')}</span>
+             <div className="text-right flex flex-col items-end"> {/* Container for value and link */}
+                 <span className="text-foreground font-semibold break-words">{String(item.value ?? 'N/A')}</span>
+                 {item.link && (
+                    <Button
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 mt-1 text-xs text-primary hover:text-accent"
+                        onClick={() => window.open(item.link!, '_blank')} // Open link in new tab
+                        aria-label={`Open ${item.label} location on Google Maps`}
+                    >
+                        Open Map
+                        <ExternalLink className="w-3 h-3 ml-1" />
+                    </Button>
+                 )}
+             </div>
            </motion.div>
          ))}
       </motion.div>
     </div>
   );
 };
-
-    
