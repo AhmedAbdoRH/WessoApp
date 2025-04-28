@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { FC } from 'react';
@@ -11,7 +12,9 @@ import { CarTypeSelection } from "./steps/CarTypeSelection";
 import { CarModelSelection } from "./steps/CarModelSelection";
 import { PassengerSelection } from "./steps/PassengerSelection";
 import { LocationSelection } from "./steps/LocationSelection";
-import { UserDetails } from "./steps/UserDetails";
+// Import the new step components
+import { FullNameInput } from "./steps/FullNameInput";
+import { PhoneNumberInput } from "./steps/PhoneNumberInput";
 import { OrderSummary } from "./steps/OrderSummary";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -43,14 +46,15 @@ export type BookingFormData = z.infer<typeof bookingSchema>;
 // Define field names more robustly for validation triggers
 type StepFieldName = keyof BookingFormData | `${keyof Pick<BookingFormData, 'pickupLocation' | 'dropoffLocation'>}.${keyof BookingFormData['pickupLocation']}`;
 
-// Keep IDs in English for simplicity in logic, but components will show Arabic labels
+// Updated steps array with FullName and PhoneNumber as separate steps
 const steps: { id: string; component: FC<any>; validationFields: StepFieldName[]; autoAdvance?: boolean }[] = [
   { id: 'carType', component: CarTypeSelection, validationFields: ['carType'], autoAdvance: true },
   { id: 'carModel', component: CarModelSelection, validationFields: ['carModel'], autoAdvance: true },
   { id: 'passengers', component: PassengerSelection, validationFields: ['passengers', 'bags'] },
   { id: 'location', component: LocationSelection, validationFields: ['pickupLocation.address', 'pickupLocation.coordinates', 'dropoffLocation.address', 'dropoffLocation.coordinates'] },
-  { id: 'userDetails', component: UserDetails, validationFields: ['fullName', 'phoneNumber'] },
-  { id: 'summary', component: OrderSummary, validationFields: [] },
+  { id: 'fullName', component: FullNameInput, validationFields: ['fullName'] }, // New step for Full Name
+  { id: 'phoneNumber', component: PhoneNumberInput, validationFields: ['phoneNumber'] }, // New step for Phone Number
+  { id: 'summary', component: OrderSummary, validationFields: [] }, // Summary is the last step
 ];
 
 
@@ -218,6 +222,7 @@ const BookingForm: FC = () => {
 
   const CurrentComponent = steps[currentStep].component;
   const shouldAutoAdvance = steps[currentStep].autoAdvance && currentStep < steps.length - 1;
+  // Updated progress calculation based on the new number of steps
   const progressPercentage = ((currentStep + 1) / steps.length) * 100;
 
   return (
@@ -246,7 +251,32 @@ const BookingForm: FC = () => {
           </motion.div>
 
 
+        {/* Swapped button order for RTL layout */}
         <div className="flex justify-between mt-8 pt-4 border-t border-white/20 dark:border-black/20">
+           {/* Next/Submit Button on the Left */}
+           {currentStep === steps.length - 1 ? (
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="glass-button bg-primary/80 hover:bg-primary text-primary-foreground px-6 py-3 text-lg font-semibold shadow-lg hover:shadow-xl active:scale-95"
+                aria-label="تأكيد وإرسال عبر واتساب"
+              >
+                {isSubmitting ? "جاري المعالجة..." : "تأكيد وإرسال"}
+              </Button>
+            ) : (
+              !shouldAutoAdvance && (
+                 <Button
+                   type="button"
+                   onClick={handleNext} // Standard next button triggers validation via handleNext
+                   className="glass-button bg-accent/80 hover:bg-accent text-accent-foreground"
+                   aria-label="الخطوة التالية"
+                 >
+                   التالي
+                 </Button>
+               )
+            )}
+
+           {/* Previous Button on the Right */}
           <Button
             type="button"
             onClick={handlePrevious}
@@ -257,27 +287,6 @@ const BookingForm: FC = () => {
             السابق
           </Button>
 
-          {!shouldAutoAdvance && currentStep !== steps.length - 1 && (
-             <Button
-               type="button"
-               onClick={handleNext} // Standard next button triggers validation via handleNext
-               className="glass-button bg-accent/80 hover:bg-accent text-accent-foreground"
-               aria-label="الخطوة التالية"
-             >
-               التالي
-             </Button>
-           )}
-
-          {currentStep === steps.length - 1 && (
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="glass-button bg-primary/80 hover:bg-primary text-primary-foreground px-6 py-3 text-lg font-semibold shadow-lg hover:shadow-xl active:scale-95"
-              aria-label="تأكيد وإرسال عبر واتساب"
-            >
-              {isSubmitting ? "جاري المعالجة..." : "تأكيد وإرسال عبر واتساب"}
-            </Button>
-          )}
         </div>
          {/* Debug: Display current form errors */}
          {/* {Object.keys(errors).length > 0 && (
@@ -291,3 +300,4 @@ const BookingForm: FC = () => {
 };
 
 export default BookingForm;
+
