@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { FC } from 'react';
@@ -17,41 +18,44 @@ import { OrderSummary } from "./steps/OrderSummary";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-// import { sendMessageToWhatsapp } from '@/services/whatsapp'; // No longer needed for client-side redirect
+
+// Refined schema: Ensure coordinates are present if address is, unless explicitly handled otherwise
+const locationDetailSchema = z.object({
+    address: z.string().min(1, "Address is required"),
+    coordinates: z.object({
+        latitude: z.number().optional(), // Coordinates might not be available immediately or if geocoding fails
+        longitude: z.number().optional(),
+    }).optional(),
+});
 
 const bookingSchema = z.object({
   carType: z.string().min(1, "Please select a car type"),
-  carModel: z.string().min(1,"Please select a car model"), // Made required
+  carModel: z.string().min(1,"Please select a car model"),
   passengers: z.coerce.number().min(1, "At least 1 passenger").max(7, "Maximum 7 passengers"),
-  bags: z.coerce.number().min(0, "Cannot have negative bags").max(5, "Maximum 5 bags"), // Allow 0 bags
-  pickupLocation: z.object({
-    address: z.string().min(1, "Please provide a pickup address"),
-    coordinates: z.object({
-      latitude: z.number().optional(), // Coordinates are optional but preferred
-      longitude: z.number().optional(),
-    }).optional(),
-  }).refine(val => val?.address, { message: "Pickup location address is required" }), // Ensure address is provided
-  dropoffLocation: z.object({
-    address: z.string().min(1, "Please provide a dropoff address"),
-    coordinates: z.object({
-      latitude: z.number().optional(), // Coordinates are optional but preferred
-      longitude: z.number().optional(),
-    }).optional(),
-   }).refine(val => val?.address, { message: "Dropoff location address is required" }), // Ensure address is provided
+  bags: z.coerce.number().min(0, "Cannot have negative bags").max(5, "Maximum 5 bags"),
+  pickupLocation: locationDetailSchema,
+  dropoffLocation: locationDetailSchema,
   fullName: z.string().min(2, "Please enter your full name"),
-  phoneNumber: z.string().min(10, "Please enter a valid phone number"),
+  phoneNumber: z.string().min(10, "Please enter a valid phone number").regex(/^\+?[0-9\s\-()]+$/, "Please enter a valid phone number"), // Basic phone format regex
 });
+
 
 export type BookingFormData = z.infer<typeof bookingSchema>;
 
-const steps = [
-  { id: 'carType', component: CarTypeSelection, validationFields: ['carType'], autoAdvance: true }, // Auto advance on selection
-  { id: 'carModel', component: CarModelSelection, validationFields: ['carModel'], autoAdvance: true }, // Auto advance on selection
+// Define field names more robustly for validation triggers
+type StepFieldName = keyof BookingFormData | `${keyof Pick<BookingFormData, 'pickupLocation' | 'dropoffLocation'>}.${keyof BookingFormData['pickupLocation']}`;
+
+
+const steps: { id: string; component: FC<any>; validationFields: StepFieldName[]; autoAdvance?: boolean }[] = [
+  { id: 'carType', component: CarTypeSelection, validationFields: ['carType'], autoAdvance: true },
+  { id: 'carModel', component: CarModelSelection, validationFields: ['carModel'], autoAdvance: true },
   { id: 'passengers', component: PassengerSelection, validationFields: ['passengers', 'bags'] },
-  { id: 'location', component: LocationSelection, validationFields: ['pickupLocation.address', 'dropoffLocation.address', 'pickupLocation.coordinates', 'dropoffLocation.coordinates'] }, // Validate address and potentially coordinates
+  // Validate both address and coordinates if available
+  { id: 'location', component: LocationSelection, validationFields: ['pickupLocation.address', 'pickupLocation.coordinates', 'dropoffLocation.address', 'dropoffLocation.coordinates'] },
   { id: 'userDetails', component: UserDetails, validationFields: ['fullName', 'phoneNumber'] },
-  { id: 'summary', component: OrderSummary, validationFields: [] }, // No validation needed for summary
+  { id: 'summary', component: OrderSummary, validationFields: [] },
 ];
+
 
 const BookingForm: FC = () => {
   const [currentStep, setCurrentStep] = useState(0);
@@ -59,12 +63,12 @@ const BookingForm: FC = () => {
 
   const methods = useForm<BookingFormData>({
     resolver: zodResolver(bookingSchema),
-    mode: "onChange", // Validate on change for better UX
+    mode: "onChange", // Validate on change
     defaultValues: {
       passengers: 1,
       bags: 1,
-      pickupLocation: { address: '', coordinates: { latitude: undefined, longitude: undefined } },
-      dropoffLocation: { address: '', coordinates: { latitude: undefined, longitude: undefined } },
+      pickupLocation: { address: '', coordinates: undefined }, // Initialize coordinates as undefined
+      dropoffLocation: { address: '', coordinates: undefined },
       fullName: '',
       phoneNumber: '',
       carType: '',
@@ -72,13 +76,11 @@ const BookingForm: FC = () => {
     },
   });
 
-  const { handleSubmit, trigger, formState: { errors, isSubmitting } } = methods;
+  const { handleSubmit, trigger, formState: { errors, isSubmitting }, watch } = methods;
 
   const handleNext = async () => {
-    const fieldsToValidate = steps[currentStep].validationFields as (keyof BookingFormData | `pickupLocation.${keyof BookingFormData['pickupLocation']}` | `dropoffLocation.${keyof BookingFormData['dropoffLocation']}`)[];
-    // Trigger validation only for the fields relevant to the current step
+    const fieldsToValidate = steps[currentStep].validationFields;
     const isValidStep = await trigger(fieldsToValidate.length > 0 ? fieldsToValidate : undefined, { shouldFocus: true });
-
 
     if (isValidStep) {
        if (currentStep < steps.length - 1) {
@@ -88,7 +90,6 @@ const BookingForm: FC = () => {
        console.log("Step validation failed", errors);
         // Find the first error message for the current step
         const firstErrorField = fieldsToValidate.find(field => {
-            // Handle nested fields like pickupLocation.address
             const parts = field.split('.');
             let errorObj: any = errors;
             for (const part of parts) {
@@ -106,8 +107,11 @@ const BookingForm: FC = () => {
                  if (!errorObj) break;
                  errorObj = errorObj[part];
              }
+             // Handle nested error messages correctly
              if (errorObj && errorObj.message) {
                  errorMessage = typeof errorObj.message === 'string' ? errorObj.message : "Please check the highlighted fields.";
+             } else if (errorObj?.address?.message) { // Check for nested address errors
+                 errorMessage = typeof errorObj.address.message === 'string' ? errorObj.address.message : "Please check the location fields.";
              }
         }
 
@@ -125,24 +129,34 @@ const BookingForm: FC = () => {
     }
   };
 
-   // Function to generate Google Maps link
+   // Function to generate Google Maps link from coordinates
    const getGoogleMapsLink = (coords?: { latitude?: number; longitude?: number }): string | null => {
-     if (coords && coords.latitude && coords.longitude) {
+     if (coords?.latitude && coords?.longitude) {
        return `https://www.google.com/maps?q=${coords.latitude},${coords.longitude}`;
      }
      return null;
    };
 
+   // Function to generate Google Maps link from address string (less precise)
+    const getGoogleMapsLinkFromAddress = (address?: string): string | null => {
+        if (address) {
+        return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+        }
+        return null;
+    };
+
+
   const onSubmit: SubmitHandler<BookingFormData> = async (data) => {
      // Final validation before submitting
-     const isValidForm = await trigger(); // Validate all fields
+     const isValidForm = await trigger();
      if (!isValidForm) {
+         console.log("Final validation failed", errors);
          toast({
              title: "Incomplete Form",
              description: "Please review the form for errors before submitting.",
              variant: "destructive",
          });
-         // Optionally navigate back to the first step with an error
+         // Navigate back to the first step with an error
           const firstErrorStep = steps.findIndex(step => step.validationFields.some(field => {
                 const parts = field.split('.');
                 let errorObj: any = errors;
@@ -160,48 +174,40 @@ const BookingForm: FC = () => {
 
      console.log("Booking Submitted:", data);
      try {
-        const pickupLink = getGoogleMapsLink(data.pickupLocation.coordinates);
-        const dropoffLink = getGoogleMapsLink(data.dropoffLocation.coordinates);
+       // Generate links preferentially from coordinates, fall back to address search if coords missing
+       const pickupMapLink = getGoogleMapsLink(data.pickupLocation.coordinates) || getGoogleMapsLinkFromAddress(data.pickupLocation.address);
+       const dropoffMapLink = getGoogleMapsLink(data.dropoffLocation.coordinates) || getGoogleMapsLinkFromAddress(data.dropoffLocation.address);
 
        // Format the message for WhatsApp
        const message = `
-         New ClearRide Booking Request:
-         -----------------------------
-         Car Type: ${data.carType}
-         Car Model: ${data.carModel}
-         Passengers: ${data.passengers}
-         Bags: ${data.bags}
-         -----------------------------
-         Pickup Location: ${data.pickupLocation.address}
-         ${pickupLink ? `Map: ${pickupLink}` : '(Coordinates not available)'}
+*New ClearRide Booking Request:*
+-----------------------------
+*Car Type:* ${data.carType}
+*Car Model:* ${data.carModel}
+*Passengers:* ${data.passengers}
+*Bags:* ${data.bags}
+-----------------------------
+*Pickup:* ${data.pickupLocation.address}${pickupMapLink ? `\n🗺️ Map: ${pickupMapLink}` : ''}
 
-         Dropoff Location: ${data.dropoffLocation.address}
-          ${dropoffLink ? `Map: ${dropoffLink}` : '(Coordinates not available)'}
-         -----------------------------
-         Client Name: ${data.fullName}
-         Client Phone: ${data.phoneNumber}
-         -----------------------------
-         Please confirm these details or let us know if you need any changes.
+*Dropoff:* ${data.dropoffLocation.address}${dropoffMapLink ? `\n🗺️ Map: ${dropoffMapLink}` : ''}
+-----------------------------
+*Client Name:* ${data.fullName}
+*Client Phone:* ${data.phoneNumber}
+-----------------------------
+Please confirm these details.
        `.trim().replace(/\n\s+/g, '\n'); // Clean up extra whitespace
 
        const encodedMessage = encodeURIComponent(message);
-       // IMPORTANT: Use the target phone number provided by the user
        const targetPhoneNumber = "201100434503"; // User's requested number
        const whatsappUrl = `https://wa.me/${targetPhoneNumber}?text=${encodedMessage}`;
 
        toast({
          title: "Booking Ready!",
-         description: "Redirecting to WhatsApp to send your booking request...",
+         description: "Redirecting to WhatsApp to send your request...",
        });
 
-       // Redirect the user to WhatsApp
-       window.location.href = whatsappUrl;
-
-       // Optionally reset form after a delay or based on some condition
-       // setTimeout(() => {
-       //   methods.reset();
-       //   setCurrentStep(0);
-       // }, 3000); // Reset after 3 seconds
+       // Redirect the user to WhatsApp in a new tab/window
+       window.open(whatsappUrl, '_blank');
 
      } catch (error) {
        console.error("Error preparing WhatsApp redirect:", error);
@@ -214,30 +220,49 @@ const BookingForm: FC = () => {
   };
 
   const CurrentComponent = steps[currentStep].component;
-  const shouldAutoAdvance = steps[currentStep].autoAdvance && currentStep < steps.length - 1; // Prevent auto-advance from summary
+  const shouldAutoAdvance = steps[currentStep].autoAdvance && currentStep < steps.length - 1;
   const progressPercentage = ((currentStep + 1) / steps.length) * 100;
+
+  // Watch for changes in auto-advancing fields to trigger next step
+  // This is an alternative if passing onNext prop becomes complex
+  // React.useEffect(() => {
+  //   const currentStepConfig = steps[currentStep];
+  //   if (currentStepConfig.autoAdvance) {
+  //     const subscription = watch((value, { name, type }) => {
+  //       if (currentStepConfig.validationFields.includes(name as StepFieldName) && type === 'change') {
+  //         // Debounce or add a small delay to avoid rapid triggers
+  //         const timer = setTimeout(() => {
+  //           handleNext();
+  //         }, 100); // Adjust delay as needed
+  //         return () => clearTimeout(timer);
+  //       }
+  //     });
+  //     return () => subscription.unsubscribe();
+  //   }
+  // }, [currentStep, watch, handleNext]);
+
 
   return (
     <FormProvider {...methods}>
       <form
         onSubmit={handleSubmit(onSubmit)}
         className="glass-card space-y-8 p-6 sm:p-8"
-        aria-live="polite" // Improve accessibility for screen readers
-        noValidate // Disable native browser validation
+        aria-live="polite"
+        noValidate
       >
          <Progress value={progressPercentage} className="w-full mb-6 h-2 bg-white/20 dark:bg-black/20 [&>div]:bg-primary" />
 
           <motion.div
-            key={currentStep}
-            initial={{ opacity: 0, x: currentStep > 0 ? 50 : -50 }} // Animate from right if moving forward, left if backward
+            key={currentStep} // Ensures component remounts on step change for animation
+            initial={{ opacity: 0, x: currentStep > 0 ? 50 : -50 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -50 }} // Always exit to left
+            exit={{ opacity: 0, x: -50 }} // Animate exit as well
             transition={{ duration: 0.3, ease: "easeInOut" }}
           >
-             {/* Pass handleNext only to components that should auto-advance */}
-            <CurrentComponent
-              errors={errors}
-              {...(shouldAutoAdvance && { onNext: handleNext })}
+             {/* Pass handleNext only to components that should auto-advance AND error state */}
+             <CurrentComponent
+                errors={errors} // Pass errors down to step components
+                {...(shouldAutoAdvance && { onNext: handleNext })}
              />
           </motion.div>
 
@@ -253,11 +278,11 @@ const BookingForm: FC = () => {
             Previous
           </Button>
 
-          {/* Hide Next button for auto-advancing steps AND the summary step */}
+          {/* Hide Next button for auto-advancing steps and the summary step */}
           {!shouldAutoAdvance && currentStep !== steps.length - 1 && (
              <Button
                type="button"
-               onClick={handleNext}
+               onClick={handleNext} // Standard next button triggers validation via handleNext
                className="glass-button bg-accent/80 hover:bg-accent text-accent-foreground"
                aria-label="Next Step"
              >
@@ -276,8 +301,12 @@ const BookingForm: FC = () => {
             </Button>
           )}
         </div>
-         {/* Optional: Display all current errors for debugging */}
-         {/* <pre className="text-xs text-destructive">{JSON.stringify(errors, null, 2)}</pre> */}
+         {/* Debug: Display current form errors */}
+         {/* {Object.keys(errors).length > 0 && (
+            <pre className="text-xs text-destructive mt-4 p-2 bg-destructive/10 rounded">
+                Errors: {JSON.stringify(errors, null, 2)}
+            </pre>
+         )} */}
       </form>
     </FormProvider>
   );

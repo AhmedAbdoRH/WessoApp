@@ -6,25 +6,25 @@ import React from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { MapPin } from 'lucide-react';
+import { Button } from '@/components/ui/button'; // Import Button
+import { MapPin, LocateFixed } from 'lucide-react'; // Import LocateFixed icon
 import type { BookingFormData } from '../BookingForm';
-import { cn } from '@/lib/utils'; // Import the cn utility function
-// Import Google Maps components - Requires API Key
-import { APIProvider, Map, useMapsLibrary, useMap } from '@vis.gl/react-google-maps';
-import { Marker } from '@vis.gl/react-google-maps'; // Separate import if needed
+import { cn } from '@/lib/utils';
+import { APIProvider, useMapsLibrary, useMap } from '@vis.gl/react-google-maps'; // Keep APIProvider, remove Map and Marker
+import { useToast } from '@/hooks/use-toast'; // Import useToast for feedback
 
 // IMPORTANT: Add your Google Maps API Key to .env.local
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
 // --- Autocomplete Component ---
-function LocationAutocomplete({ fieldName, errors, onPlaceSelect }: {
+function LocationAutocomplete({ fieldName, errors, onPlaceSelect, label }: {
   fieldName: `pickupLocation.address` | `dropoffLocation.address`;
   errors: any;
-  onPlaceSelect: (type: 'pickup' | 'dropoff', place: google.maps.places.PlaceResult | null, addressString: string) => void; // Updated signature
+  onPlaceSelect: (type: 'pickup' | 'dropoff', place: google.maps.places.PlaceResult | null, addressString: string) => void;
+  label: string; // Add label prop
 }) {
-  const { control, setValue } = useFormContext<BookingFormData>(); // Added setValue
-  const map = useMap();
-  const places = useMapsLibrary('places');
+  const { control, setValue } = useFormContext<BookingFormData>();
+  const places = useMapsLibrary('places'); // Ensure 'places' library is loaded
   const [autocomplete, setAutocomplete] = React.useState<google.maps.places.Autocomplete | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const placeChangedListener = React.useRef<google.maps.MapsEventListener | null>(null);
@@ -33,65 +33,74 @@ function LocationAutocomplete({ fieldName, errors, onPlaceSelect }: {
   React.useEffect(() => {
     if (!places || !inputRef.current) return;
 
-    // Create Autocomplete instance if it doesn't exist
     if (!autocomplete) {
         const ac = new places.Autocomplete(inputRef.current, {
-          fields: ["geometry", "formatted_address", "name"], // Added name
-           // Optionally restrict search area, e.g., to Egypt: componentRestrictions: { country: 'EG' }
+          fields: ["geometry", "formatted_address", "name"], // Request necessary fields
+          // Optionally restrict search area, e.g., to Egypt: componentRestrictions: { country: 'EG' }
         });
         setAutocomplete(ac);
 
-        // Remove previous listener before adding a new one
         if (placeChangedListener.current) {
           placeChangedListener.current.remove();
         }
 
-        // Add listener for place selection
         placeChangedListener.current = ac.addListener("place_changed", () => {
           const place = ac.getPlace();
           const type = fieldName.startsWith('pickup') ? 'pickup' : 'dropoff';
           if (place.geometry && place.formatted_address) {
-            if (map && place.geometry.location) {
-                map.panTo(place.geometry.location);
-                map.setZoom(15); // Zoom in on selected place
-            }
-            // Update the form field with the selected address
+            // Update the form field with the selected address FIRST
             setValue(fieldName, place.formatted_address, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-            onPlaceSelect(type, place, place.formatted_address); // Pass place and address
+            // THEN call the callback to handle coordinates etc.
+            onPlaceSelect(type, place, place.formatted_address);
           } else {
-            console.warn("Place selected without geometry or formatted address:", place);
-            // Handle cases where the user types something not in Places API but hits Enter
-            // Pass null for place, but keep the entered address string
-            onPlaceSelect(type, null, inputRef.current?.value || '');
+             console.warn("Place selected without geometry or formatted address:", place);
+             // If user enters text and hits enter without selecting a suggestion
+             const enteredAddress = inputRef.current?.value || '';
+             setValue(fieldName, enteredAddress, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+             onPlaceSelect(type, null, enteredAddress);
           }
         });
     }
 
-
-    // Cleanup listener on component unmount
     return () => {
         if (placeChangedListener.current) {
             placeChangedListener.current.remove();
         }
-        // Optional: remove Autocomplete instance if component unmounts,
-        // though usually it's fine to keep it if the input persists
-        // if (autocomplete) {
-        //    autocomplete.unbindAll(); // Clean up bindings
-        // }
+        // Clean up autocomplete instance and listeners when the component unmounts
+        // This prevents potential memory leaks if the component is frequently mounted/unmounted
+        if (autocomplete) {
+             // google.maps.event.clearInstanceListeners(autocomplete); // Deprecated way
+             // UnbindAll seems to be the way, but might not be strictly necessary if listeners are cleared
+              if(typeof autocomplete.unbindAll === 'function') {
+                 autocomplete.unbindAll();
+             }
+             // Consider removing the listener specifically if unbindAll isn't available/reliable
+             if (placeChangedListener.current) {
+                placeChangedListener.current.remove();
+                placeChangedListener.current = null; // Clear ref
+             }
+        }
     };
-
-  }, [places, autocomplete, map, fieldName, onPlaceSelect, setValue]);
+  // Add autocomplete to dependency array to ensure cleanup/re-init if it changes (though it shouldn't often)
+  }, [places, autocomplete, fieldName, onPlaceSelect, setValue]);
 
 
   const handleBlur = (event: React.FocusEvent<HTMLInputElement>) => {
-      const addressString = event.target.value;
-      // If the user blurs without selecting a place from dropdown,
-      // trigger the geocoding simulation/logic
-      if (addressString && !autocomplete?.getPlace()?.geometry) {
-          const type = fieldName.startsWith('pickup') ? 'pickup' : 'dropoff';
-          console.log("Blur event with address:", addressString);
-          onPlaceSelect(type, null, addressString); // Pass null place, use address string
-      }
+      // Use timeout to allow place_changed event to fire first if a selection was made
+      setTimeout(() => {
+          const addressString = event.target.value;
+          // Check if a place was selected *just before* blur
+          const placeSelected = autocomplete?.getPlace()?.geometry;
+
+          if (!placeSelected && addressString) {
+              const type = fieldName.startsWith('pickup') ? 'pickup' : 'dropoff';
+              console.log("Blur event without selection, address:", addressString);
+              // Update form value on blur even if no suggestion was selected
+              setValue(fieldName, addressString, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+              // Trigger coordinate lookup/simulation based on the raw address string
+              onPlaceSelect(type, null, addressString);
+          }
+      }, 100); // 100ms delay might be enough
   };
 
 
@@ -101,14 +110,21 @@ function LocationAutocomplete({ fieldName, errors, onPlaceSelect }: {
          control={control}
          render={({ field }) => (
            <Input
-             ref={inputRef}
+             ref={inputRef} // Attach ref here
              id={fieldName}
-             {...field} // Use field from Controller
-             placeholder={`Enter ${fieldName.includes('pickup') ? 'pickup' : 'dropoff'} address`}
+             value={field.value || ''} // Controlled input value
+             onChange={(e) => {
+                 field.onChange(e); // Update RHF state
+                 // If you need immediate feedback/actions on typing, add here
+             }}
+             placeholder={`Enter ${label} address`}
              className={cn("glass-input pl-10", errors?.[fieldName.split('.')[0]]?.[fieldName.split('.')[1]] ? "border-destructive" : "")}
              aria-invalid={errors?.[fieldName.split('.')[0]]?.[fieldName.split('.')[1]] ? "true" : "false"}
-             onBlur={handleBlur} // Handle blur for manual entries
-             // onChange is handled by Controller
+             onBlur={(e) => {
+                 field.onBlur(); // RHF blur handler
+                 handleBlur(e); // Custom blur handler
+             }}
+             // Remove onBlur={handleBlur} if Controller's onBlur is sufficient, but custom one adds delay logic
            />
          )}
        />
@@ -118,7 +134,15 @@ function LocationAutocomplete({ fieldName, errors, onPlaceSelect }: {
 
 
 export const LocationSelection: FC<{ errors: any }> = ({ errors }) => {
-  const { control, setValue, getValues, trigger } = useFormContext<BookingFormData>(); // Added trigger
+  const { control, setValue, trigger } = useFormContext<BookingFormData>();
+  const { toast } = useToast();
+  const geocoding = useMapsLibrary('geocoding'); // Load geocoding library
+  const [geocoder, setGeocoder] = React.useState<google.maps.Geocoder | null>(null);
+
+  React.useEffect(() => {
+      if (!geocoding) return;
+      setGeocoder(new geocoding.Geocoder());
+  }, [geocoding]);
 
   // Function to handle place selection from autocomplete or manual input blur
    const handleLocationSelect = (type: 'pickup' | 'dropoff', place: google.maps.places.PlaceResult | null, addressString: string) => {
@@ -127,83 +151,149 @@ export const LocationSelection: FC<{ errors: any }> = ({ errors }) => {
      let coordinates: { latitude?: number; longitude?: number } | undefined = undefined;
      let finalAddress = addressString; // Default to the input string
 
+     const fieldNamePrefix = type === 'pickup' ? 'pickupLocation' : 'dropoffLocation';
+
      if (place?.geometry?.location) {
          coordinates = {
            latitude: place.geometry.location.lat(),
            longitude: place.geometry.location.lng(),
          };
-         // Use the formatted address from Google for consistency
-         finalAddress = place.formatted_address || addressString;
+         finalAddress = place.formatted_address || addressString; // Use Google's formatted address
          console.log(`Coordinates from Place:`, coordinates);
-     } else if (finalAddress.trim() !== '') {
-        // **Placeholder Geocoding**: If no place result, simulate coordinates based on address string
-        // In a real app, you'd call a Geocoding API here to get coordinates from the address string
-        // Example: Use a hash or simple check for demo purposes
-        console.warn(`No valid place selected for "${finalAddress}". Simulating coordinates.`);
-        if (finalAddress.toLowerCase().includes('cairo')) {
-             coordinates = { latitude: 30.0444, longitude: 31.2357 };
-        } else if (finalAddress.toLowerCase().includes('giza')) {
-             coordinates = { latitude: 29.9792, longitude: 31.1342 };
-        } else {
-             // Simulate generic coordinates if address doesn't match known patterns
-             // Make coordinates slightly different to avoid overlap in demo
-             const randomOffsetLat = (Math.random() - 0.5) * 0.1;
-             const randomOffsetLng = (Math.random() - 0.5) * 0.1;
-             coordinates = type === 'pickup'
-               ? { latitude: 34.0522 + randomOffsetLat, longitude: -118.2437 + randomOffsetLng }
-               : { latitude: 34.1522 + randomOffsetLat, longitude: -118.3437 + randomOffsetLng };
-        }
-        console.log(`Simulated coordinates for ${finalAddress}:`, coordinates);
+
+         // Update address field (already done by Autocomplete component, but ensure consistency)
+          setValue(`${fieldNamePrefix}.address`, finalAddress, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+         // Update coordinates
+         setValue(`${fieldNamePrefix}.coordinates`, coordinates, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+         // Trigger validation
+         trigger(`${fieldNamePrefix}.address`);
+         trigger(`${fieldNamePrefix}.coordinates`);
+
+     } else if (finalAddress.trim() !== '' && geocoder) {
+        // If no Place object but address string exists, try to geocode it
+        console.log(`Geocoding address string: "${finalAddress}"`);
+        geocoder.geocode({ address: finalAddress }, (results, status) => {
+           if (status === 'OK' && results && results[0]?.geometry?.location) {
+             const location = results[0].geometry.location;
+             coordinates = { latitude: location.lat(), longitude: location.lng() };
+             finalAddress = results[0].formatted_address || finalAddress; // Use geocoded address if available
+             console.log(`Geocoding successful for "${addressString}":`, coordinates, finalAddress);
+             // Update form values
+             setValue(`${fieldNamePrefix}.address`, finalAddress, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+             setValue(`${fieldNamePrefix}.coordinates`, coordinates, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+           } else {
+             console.warn(`Geocoding failed for "${addressString}": ${status}`);
+             toast({ title: "Location Error", description: `Could not find coordinates for "${finalAddress}". Please try a more specific address.`, variant: "destructive" });
+             // Clear coordinates if geocoding fails
+             setValue(`${fieldNamePrefix}.coordinates`, undefined, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+           }
+            // Trigger validation after geocoding attempt
+           trigger(`${fieldNamePrefix}.address`);
+           trigger(`${fieldNamePrefix}.coordinates`);
+        });
+     } else if (finalAddress.trim() === '') {
+        // If address is empty, clear coordinates
+         setValue(`${fieldNamePrefix}.coordinates`, undefined, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+          trigger(`${fieldNamePrefix}.address`);
+          trigger(`${fieldNamePrefix}.coordinates`);
+     } else if (!geocoder) {
+         console.warn("Geocoder not ready yet.");
+         // Fallback: clear coordinates if geocoder isn't ready and no place was selected
+         setValue(`${fieldNamePrefix}.coordinates`, undefined, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+          trigger(`${fieldNamePrefix}.address`);
+          trigger(`${fieldNamePrefix}.coordinates`);
      }
-
-     const fieldNamePrefix = type === 'pickup' ? 'pickupLocation' : 'dropoffLocation';
-     // Ensure address is updated even if it's just the string entered by the user
-     setValue(`${fieldNamePrefix}.address`, finalAddress, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-     setValue(`${fieldNamePrefix}.coordinates`, coordinates, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-
-     // Trigger validation after setting values
-     trigger(`${fieldNamePrefix}.address`);
-     trigger(`${fieldNamePrefix}.coordinates`);
-
-     // Update map markers (optional, could also be done via useEffect watching coordinates)
-     // Consider adding logic here to update map center/zoom if needed
    };
 
+   // --- Handle Get Current Location ---
+   const handleGetCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast({ title: "Geolocation Error", description: "Geolocation is not supported by your browser.", variant: "destructive" });
+      return;
+    }
+    if (!geocoder) {
+        toast({ title: "Map Error", description: "Geocoder service is not ready yet. Please wait a moment.", variant: "destructive" });
+        return;
+    }
+
+    toast({ title: "Fetching Location", description: "Getting your current position..." });
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const coords = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        };
+        console.log("Current coordinates:", coords);
+
+        // Reverse geocode to get address
+        geocoder.geocode({ location: { lat: coords.latitude, lng: coords.longitude } }, (results, status) => {
+          if (status === 'OK' && results && results[0]) {
+            const address = results[0].formatted_address;
+            console.log("Reverse geocoded address:", address);
+            setValue('pickupLocation.address', address, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+            setValue('pickupLocation.coordinates', coords, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+            toast({ title: "Location Set", description: `Pickup location set to: ${address}` });
+             trigger('pickupLocation.address');
+             trigger('pickupLocation.coordinates');
+          } else {
+            console.warn("Reverse geocoding failed:", status);
+            // Still set coordinates, but show error for address
+            setValue('pickupLocation.coordinates', coords, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+            setValue('pickupLocation.address', `Lat: ${coords.latitude.toFixed(4)}, Lng: ${coords.longitude.toFixed(4)}`, { shouldValidate: true, shouldDirty: true, shouldTouch: true }); // Fallback address
+            toast({ title: "Address Error", description: "Could not find address for your current location. Coordinates set.", variant: "destructive" });
+             trigger('pickupLocation.address');
+             trigger('pickupLocation.coordinates');
+          }
+        });
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        let message = "An unknown error occurred.";
+        switch(error.code) {
+            case error.PERMISSION_DENIED:
+                message = "Location permission denied. Please enable location access in your browser settings.";
+                break;
+            case error.POSITION_UNAVAILABLE:
+                message = "Location information is unavailable.";
+                break;
+            case error.TIMEOUT:
+                message = "The request to get user location timed out.";
+                break;
+        }
+        toast({ title: "Geolocation Error", description: message, variant: "destructive" });
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 } // Options
+    );
+  };
 
   return (
     <div className="space-y-6">
       <Label className="text-xl font-semibold text-foreground block mb-4">Set Route</Label>
-       <p className="text-sm text-muted-foreground mb-6">Enter your pickup and destination points. You can use the map or type addresses below.</p>
+       <p className="text-sm text-muted-foreground mb-6">Enter your pickup and destination points.</p>
 
-       {/* --- Google Maps Integration (Requires API Key) --- */}
+       {/* --- Render based on API Key availability --- */}
        {GOOGLE_MAPS_API_KEY ? (
-         <APIProvider apiKey={GOOGLE_MAPS_API_KEY} libraries={['places']}> {/* Add places library */}
-           <div className="h-64 w-full rounded-lg overflow-hidden glass-card p-0 border-none shadow-inner mb-6">
-             <Map
-               defaultCenter={{ lat: 30.0444, lng: 31.2357 }} // Example: Cairo center
-               defaultZoom={10}
-               mapId="clearride-map"
-               className="w-full h-full"
-               gestureHandling="greedy" // Allow map interaction
-               disableDefaultUI={true} // Cleaner map
-               zoomControl={true}
-             >
-               {/* Render Markers based on form values */}
-               {getValues('pickupLocation.coordinates.latitude') && getValues('pickupLocation.coordinates.longitude') && (
-                 <Marker position={{ lat: getValues('pickupLocation.coordinates.latitude')!, lng: getValues('pickupLocation.coordinates.longitude')! }} title="Pickup" />
-               )}
-               {getValues('dropoffLocation.coordinates.latitude') && getValues('dropoffLocation.coordinates.longitude') && (
-                 <Marker position={{ lat: getValues('dropoffLocation.coordinates.latitude')!, lng: getValues('dropoffLocation.coordinates.longitude')! }} title="Dropoff" />
-               )}
-             </Map>
-           </div>
-
-           {/* --- Input fields with Autocomplete (Inside APIProvider) --- */}
+         // APIProvider is necessary for useMapsLibrary hook
+         <APIProvider apiKey={GOOGLE_MAPS_API_KEY} libraries={['places', 'geocoding']}>
+            {/* --- Input fields with Autocomplete (Inside APIProvider) --- */}
            <div className="space-y-4">
              <div>
-               <Label htmlFor="pickupLocation.address" className="text-sm font-medium text-foreground flex items-center mb-1">
-                 <MapPin className="w-4 h-4 mr-2 text-primary" /> Pickup Location
-               </Label>
+                <div className="flex justify-between items-center mb-1">
+                  <Label htmlFor="pickupLocation.address" className="text-sm font-medium text-foreground flex items-center">
+                     <MapPin className="w-4 h-4 mr-2 text-primary" /> Pickup Location
+                  </Label>
+                   {/* "Use Current Location" Button */}
+                   <Button
+                     type="button"
+                     variant="outline"
+                     size="sm"
+                     onClick={handleGetCurrentLocation}
+                     className="glass-button text-xs px-2 py-1 h-auto" // Smaller button
+                   >
+                     <LocateFixed className="w-3 h-3 mr-1" /> Use Current Location
+                   </Button>
+                </div>
                <div className="relative">
                    <MapPin className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none z-10"/>
                    {/* Ensure Autocomplete is rendered within Map context */}
@@ -211,15 +301,12 @@ export const LocationSelection: FC<{ errors: any }> = ({ errors }) => {
                      fieldName="pickupLocation.address"
                      errors={errors}
                      onPlaceSelect={handleLocationSelect}
+                     label="pickup"
                     />
                </div>
                {errors?.pickupLocation?.address && (
                  <p className="text-sm font-medium text-destructive mt-1">{errors.pickupLocation.address.message}</p>
                )}
-                {/* Combine coordinate and address errors for simplicity if needed */}
-                {/* {errors?.pickupLocation && (errors?.pickupLocation.address || errors?.pickupLocation.coordinates) && (
-                   <p className="text-sm font-medium text-destructive mt-1">Please select a valid pickup location.</p>
-                 )} */}
              </div>
 
              <div>
@@ -232,23 +319,20 @@ export const LocationSelection: FC<{ errors: any }> = ({ errors }) => {
                      fieldName="dropoffLocation.address"
                      errors={errors}
                      onPlaceSelect={handleLocationSelect}
+                     label="dropoff"
                    />
                 </div>
                {errors?.dropoffLocation?.address && (
                  <p className="text-sm font-medium text-destructive mt-1">{errors.dropoffLocation.address.message}</p>
                )}
-               {/* Combine coordinate and address errors */}
-                {/* {errors?.dropoffLocation && (errors?.dropoffLocation.address || errors?.dropoffLocation.coordinates) && (
-                   <p className="text-sm font-medium text-destructive mt-1">Please select a valid dropoff location.</p>
-                 )} */}
              </div>
            </div>
          </APIProvider>
        ) : (
        /* --- Fallback if no API Key --- */
        <div className="space-y-6">
-         <div className="h-64 w-full rounded-lg bg-muted/50 flex items-center justify-center text-muted-foreground glass-card p-4 border-none shadow-inner mb-6 text-center">
-           Map features require a Google Maps API Key.<br /> Please add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to your .env.local file.
+         <div className="rounded-lg bg-muted/50 p-4 text-center text-muted-foreground glass-card border-none shadow-inner mb-6">
+           Location autocomplete and current location features require a Google Maps API Key. Please add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to your .env.local file. Falling back to manual address input.
          </div>
          {/* Fallback Input Fields (No Autocomplete) */}
           <div className="space-y-4">
@@ -267,7 +351,8 @@ export const LocationSelection: FC<{ errors: any }> = ({ errors }) => {
                           {...field}
                           placeholder="Enter pickup address"
                           className={cn("glass-input pl-10", errors?.pickupLocation?.address ? "border-destructive" : "")}
-                          onBlur={() => handleLocationSelect('pickup', null, field.value)} // Simulate coords on blur
+                          // Simple blur update (no geocoding/simulation in fallback)
+                          onBlur={() => trigger('pickupLocation.address')}
                           aria-invalid={errors?.pickupLocation?.address ? "true" : "false"}
                       />
                       )}
@@ -293,7 +378,7 @@ export const LocationSelection: FC<{ errors: any }> = ({ errors }) => {
                           {...field}
                           placeholder="Enter dropoff address"
                           className={cn("glass-input pl-10", errors?.dropoffLocation?.address ? "border-destructive" : "")}
-                          onBlur={() => handleLocationSelect('dropoff', null, field.value)} // Simulate coords on blur
+                           onBlur={() => trigger('dropoffLocation.address')}
                           aria-invalid={errors?.dropoffLocation?.address ? "true" : "false"}
                       />
                       )}

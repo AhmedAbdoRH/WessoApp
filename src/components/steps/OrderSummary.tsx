@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { FC } from 'react';
@@ -9,7 +10,7 @@ import { Car, Users, Luggage, MapPin, User, Phone, ExternalLink } from 'lucide-r
 import type { BookingFormData } from '../BookingForm';
 import { Button } from '@/components/ui/button'; // Import Button for link
 
-// Helper function to generate Google Maps link
+// Helper function to generate Google Maps link from coordinates
 const getGoogleMapsLink = (coords?: { latitude?: number; longitude?: number }): string | null => {
   if (coords?.latitude && coords?.longitude) {
     return `https://www.google.com/maps?q=${coords.latitude},${coords.longitude}`;
@@ -17,13 +18,23 @@ const getGoogleMapsLink = (coords?: { latitude?: number; longitude?: number }): 
   return null;
 };
 
+// Helper function to generate Google Maps search link from address
+const getGoogleMapsLinkFromAddress = (address?: string): string | null => {
+    if (address) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+    }
+    return null;
+};
+
+
 // Added errors prop, though it's not used in this component currently
 export const OrderSummary: FC<{ errors?: any }> = () => {
   const { getValues } = useFormContext<BookingFormData>();
   const formData = getValues();
 
-  const pickupLink = getGoogleMapsLink(formData.pickupLocation?.coordinates);
-  const dropoffLink = getGoogleMapsLink(formData.dropoffLocation?.coordinates);
+  // Prefer coordinate link, fall back to address search link
+  const pickupLink = getGoogleMapsLink(formData.pickupLocation?.coordinates) || getGoogleMapsLinkFromAddress(formData.pickupLocation?.address);
+  const dropoffLink = getGoogleMapsLink(formData.dropoffLocation?.coordinates) || getGoogleMapsLinkFromAddress(formData.dropoffLocation?.address);
 
   const summaryItemVariants = {
     hidden: { opacity: 0, y: 10 },
@@ -73,27 +84,30 @@ export const OrderSummary: FC<{ errors?: any }> = () => {
        >
          {summaryItems.map((item, index) => (
            <motion.div
-             key={item.label}
-             className="flex items-start justify-between text-sm py-2 border-b border-white/10 dark:border-black/10 last:border-b-0 gap-2" // Added gap
+             key={`${item.label}-${index}`} // Use index in key for potentially duplicate labels like MapPin
+             className="flex items-start justify-between text-sm py-2 border-b border-white/10 dark:border-black/10 last:border-b-0 gap-4" // Increased gap
              variants={summaryItemVariants}
              custom={index} // Pass index for staggered delay
            >
-             <span className="flex items-center font-medium text-muted-foreground flex-shrink-0"> {/* Prevent shrinking */}
+             <span className="flex items-center font-medium text-muted-foreground flex-shrink-0 w-1/3"> {/* Assign width to label column */}
                <item.icon className="w-4 h-4 mr-2 text-primary flex-shrink-0" />
                {item.label}:
              </span>
-             <div className="text-right flex flex-col items-end"> {/* Container for value and link */}
-                 <span className="text-foreground font-semibold break-words">{String(item.value ?? 'N/A')}</span>
+             <div className="text-right flex flex-col items-end flex-grow w-2/3"> {/* Assign width to value column */}
+                 <span className="text-foreground font-semibold break-words text-wrap">{String(item.value ?? 'N/A')}</span>
                  {item.link && (
                     <Button
                         variant="link"
                         size="sm"
-                        className="h-auto p-0 mt-1 text-xs text-primary hover:text-accent"
-                        onClick={() => window.open(item.link!, '_blank')} // Open link in new tab
+                        className="h-auto p-0 mt-1 text-xs text-primary hover:text-accent whitespace-nowrap" // Prevent wrap on button
+                        onClick={(e) => {
+                            e.preventDefault(); // Prevent potential form interaction
+                            window.open(item.link!, '_blank', 'noopener,noreferrer'); // Securely open link
+                        }}
                         aria-label={`Open ${item.label} location on Google Maps`}
                     >
-                        Open Map
-                        <ExternalLink className="w-3 h-3 ml-1" />
+                        View on Map
+                        <ExternalLink className="w-3 h-3 ml-1 flex-shrink-0" />
                     </Button>
                  )}
              </div>
