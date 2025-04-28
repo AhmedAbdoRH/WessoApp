@@ -12,85 +12,97 @@ import type { BookingFormData } from '../BookingForm';
 
 interface CarModelOption {
   value: string;
-  label: string;
+  label: string; // Label in Arabic
   imageUrl: string;
-  type: string; // To filter models based on selected car type
+  type: string; // Keep type value in English for consistency with CarTypeSelection
 }
 
-// Example car models - expand this list based on actual offerings
+// Example car models with Arabic labels
 const allCarModels: CarModelOption[] = [
   // Sedans
-  { value: 'toyota-camry', label: 'Toyota Camry', imageUrl: 'https://picsum.photos/seed/camry/300/200', type: 'sedan' },
-  { value: 'honda-accord', label: 'Honda Accord', imageUrl: 'https://picsum.photos/seed/accord/300/200', type: 'sedan' },
-  { value: 'mercedes-e-class', label: 'Mercedes E-Class', imageUrl: 'https://picsum.photos/seed/eclass/300/200', type: 'sedan' },
+  { value: 'toyota-camry', label: 'تويوتا كامري', imageUrl: 'https://picsum.photos/seed/camry/300/200', type: 'sedan' },
+  { value: 'honda-accord', label: 'هوندا أكورد', imageUrl: 'https://picsum.photos/seed/accord/300/200', type: 'sedan' },
+  { value: 'mercedes-e-class', label: 'مرسيدس E-Class', imageUrl: 'https://picsum.photos/seed/eclass/300/200', type: 'sedan' },
   // Limousines
-  { value: 'lincoln-stretch', label: 'Lincoln Stretch', imageUrl: 'https://picsum.photos/seed/lincoln/300/200', type: 'limousine' },
-  { value: 'cadillac-escalade-limo', label: 'Cadillac Escalade Limo', imageUrl: 'https://picsum.photos/seed/escalade-limo/300/200', type: 'limousine' },
+  { value: 'lincoln-stretch', label: 'لينكولن ستريتش', imageUrl: 'https://picsum.photos/seed/lincoln/300/200', type: 'limousine' },
+  { value: 'cadillac-escalade-limo', label: 'كاديلاك إسكاليد ليمو', imageUrl: 'https://picsum.photos/seed/escalade-limo/300/200', type: 'limousine' },
   // Large Cars
-  { value: 'chevrolet-suburban', label: 'Chevrolet Suburban', imageUrl: 'https://picsum.photos/seed/suburban/300/200', type: 'large' },
-  { value: 'ford-expedition', label: 'Ford Expedition', imageUrl: 'https://picsum.photos/seed/expedition/300/200', type: 'large' },
+  { value: 'chevrolet-suburban', label: 'شيفروليه سوبربان', imageUrl: 'https://picsum.photos/seed/suburban/300/200', type: 'large' },
+  { value: 'ford-expedition', label: 'فورد إكسبيديشن', imageUrl: 'https://picsum.photos/seed/expedition/300/200', type: 'large' },
   // 7-Seaters
-  { value: 'toyota-sienna', label: 'Toyota Sienna', imageUrl: 'https://picsum.photos/seed/sienna/300/200', type: '7seater' },
-  { value: 'honda-odyssey', label: 'Honda Odyssey', imageUrl: 'https://picsum.photos/seed/odyssey/300/200', type: '7seater' },
-  { value: 'chrysler-pacifica', label: 'Chrysler Pacifica', imageUrl: 'https://picsum.photos/seed/pacifica/300/200', type: '7seater' },
+  { value: 'toyota-sienna', label: 'تويوتا سيينا', imageUrl: 'https://picsum.photos/seed/sienna/300/200', type: '7seater' },
+  { value: 'honda-odyssey', label: 'هوندا أوديسي', imageUrl: 'https://picsum.photos/seed/odyssey/300/200', type: '7seater' },
+  { value: 'chrysler-pacifica', label: 'كرايسلر باسيفيكا', imageUrl: 'https://picsum.photos/seed/pacifica/300/200', type: '7seater' },
 ];
 
+// Helper to get Arabic type name
+export const getArabicCarTypeName = (typeValue: string): string => {
+    switch (typeValue) {
+        case 'limousine': return 'ليموزين';
+        case 'sedan': return 'سيدان (ملاكي)';
+        case 'large': return 'سيارة كبيرة';
+        case '7seater': return '7 مقاعد';
+        default: return typeValue; // Fallback
+    }
+}
+
+
 interface CarModelSelectionProps {
-  errors?: any; // Optional errors prop
-  onNext?: () => Promise<void> | void; // Optional prop for auto-advancing
+  errors?: any;
+  onNext?: () => Promise<void> | void;
 }
 
 export const CarModelSelection: FC<CarModelSelectionProps> = ({ errors, onNext }) => {
-  const { register, watch, setValue, formState } = useFormContext<BookingFormData>(); // Destructure errors from formState if needed directly here
+  const { register, watch, setValue, formState } = useFormContext<BookingFormData>();
   const selectedCarType = watch('carType');
   const selectedCarModel = watch('carModel');
 
   const handleSelect = async (value: string) => {
     setValue('carModel', value, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-    // If onNext prop is provided, call it to potentially advance the step
     if (onNext) {
-      // Add a small delay to allow state update and validation if needed
+      // Short delay allows the state update to propagate before potential navigation/validation
       await new Promise(resolve => setTimeout(resolve, 50));
       await onNext();
     }
   };
 
-  // Filter models based on the selected car type
   const availableModels = allCarModels.filter(model => model.type === selectedCarType);
 
-  // Handle case where no type is selected yet or no models match
   if (!selectedCarType) {
     return (
       <div className="space-y-4 text-center">
-        <Label className="text-xl font-semibold text-foreground">Select Car Model</Label>
-        <p className="text-muted-foreground">Please select a car type first to see available models.</p>
+        <Label className="text-xl font-semibold text-foreground">اختر موديل السيارة</Label>
+        <p className="text-muted-foreground">الرجاء اختيار نوع السيارة أولاً لرؤية الموديلات المتاحة.</p>
       </div>
     );
   }
 
+    // Handle case where no specific models are defined for a type (auto-advance with default)
     if (availableModels.length === 0) {
-      // Automatically set a default value if no specific models are available for the type
       const defaultModelValue = `${selectedCarType}-default`;
+      const arabicCarTypeName = getArabicCarTypeName(selectedCarType);
+       // Effect to set default model and attempt auto-advance
        React.useEffect(() => {
          setValue('carModel', defaultModelValue, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-         // Auto-advance if possible when a default is set
           const tryAutoAdvance = async () => {
               if (onNext) {
-                  await new Promise(resolve => setTimeout(resolve, 50)); // Ensure state update
+                  // Short delay to ensure state update before advancing
+                  await new Promise(resolve => setTimeout(resolve, 50));
                   await onNext();
               }
           }
           tryAutoAdvance();
-
+        // Dependencies: only run when the selected type or onNext changes, and defaultModelValue is recalculated
        }, [selectedCarType, setValue, onNext, defaultModelValue]);
 
       return (
          <div className="space-y-4 text-center">
-           <Label className="text-xl font-semibold text-foreground">Car Model</Label>
-           <p className="text-muted-foreground">Standard model for {selectedCarType} will be assigned.</p>
+           <Label className="text-xl font-semibold text-foreground">موديل السيارة</Label>
+           <p className="text-muted-foreground">سيتم تعيين الموديل القياسي لنوع {arabicCarTypeName}.</p>
+            {/* Ensure the hidden input is registered */}
             <input type="hidden" {...register('carModel')} value={defaultModelValue} />
-            {/* Display the error if the hidden input doesn't satisfy validation */}
-             {formState.errors.carModel && ( // Access errors via formState
+             {/* Display potential validation error for carModel */}
+             {formState.errors.carModel && (
                 <p className="text-sm font-medium text-destructive mt-2">{formState.errors.carModel.message}</p>
             )}
          </div>
@@ -100,20 +112,23 @@ export const CarModelSelection: FC<CarModelSelectionProps> = ({ errors, onNext }
 
   return (
     <div className="space-y-6">
-      <Label className="text-xl font-semibold text-foreground block mb-4">Select Car Model</Label>
-      <p className="text-sm text-muted-foreground mb-6">Choose a specific model from the selected car type.</p>
+      <Label className="text-xl font-semibold text-foreground block mb-4">اختر موديل السيارة</Label>
+      <p className="text-sm text-muted-foreground mb-6">اختر موديلًا محددًا من نوع السيارة الذي اخترته.</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {availableModels.map((model) => (
           <motion.div
              key={model.value}
              whileHover={{ scale: 1.03 }}
              whileTap={{ scale: 0.98 }}
+             // Add slight animation on selection
+             animate={{ scale: selectedCarModel === model.value ? 1.02 : 1 }}
+             transition={{ type: "spring", stiffness: 400, damping: 15 }}
            >
             <Card
               className={cn(
                 'glass-card cursor-pointer transition-all duration-200 ease-in-out overflow-hidden',
-                selectedCarModel === model.value ? 'ring-2 ring-primary ring-offset-2 ring-offset-background/50 dark:ring-offset-black/50' : 'ring-0', // Adjusted ring offset for dark mode
-                formState.errors.carModel ? 'border-destructive' : 'border-white/20 dark:border-black/20' // Access errors via formState
+                selectedCarModel === model.value ? 'ring-2 ring-primary ring-offset-2 ring-offset-background/50 dark:ring-offset-black/50 shadow-lg' : 'ring-0 shadow-md hover:shadow-lg', // Enhanced hover/selection effect
+                formState.errors.carModel ? 'border-destructive' : 'border-white/20 dark:border-black/20'
               )}
               onClick={() => handleSelect(model.value)}
               role="radio"
@@ -121,32 +136,39 @@ export const CarModelSelection: FC<CarModelSelectionProps> = ({ errors, onNext }
               tabIndex={0}
               onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleSelect(model.value)}
             >
+               {/* Hidden radio input for form state */}
                <input
                  type="radio"
                  id={`carModel-${model.value}`}
                  value={model.value}
                  {...register('carModel')}
+                 checked={selectedCarModel === model.value}
                  className="sr-only"
                  aria-labelledby={`carModel-label-${model.value}`}
                />
-              <CardHeader className="p-0 relative h-32 sm:h-40"> {/* Adjusted height */}
+              <CardHeader className="p-0 relative h-32 sm:h-40">
                 <Image
                   src={model.imageUrl}
-                  alt={model.label}
+                  alt={model.label} // Use Arabic label for alt text
                   layout="fill"
                   objectFit="cover"
                   className="rounded-t-lg"
+                  // Add quality prop for optimization
+                  quality={75}
+                  priority={false} // Only prioritize above-the-fold images if needed
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent rounded-t-lg"></div>
+                {/* Gradient overlay for better text visibility */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent rounded-t-lg"></div>
               </CardHeader>
-              <CardContent className="p-3 sm:p-4"> {/* Adjusted padding */}
+              <CardContent className="p-3 sm:p-4">
                 <CardTitle id={`carModel-label-${model.value}`} className="text-base sm:text-lg font-medium text-center text-foreground truncate">{model.label}</CardTitle>
               </CardContent>
             </Card>
           </motion.div>
         ))}
       </div>
-      {formState.errors.carModel && ( // Access errors via formState
+      {/* Display validation error if carModel field is invalid */}
+      {formState.errors.carModel && (
         <p className="text-sm font-medium text-destructive mt-2">{formState.errors.carModel.message}</p>
       )}
     </div>

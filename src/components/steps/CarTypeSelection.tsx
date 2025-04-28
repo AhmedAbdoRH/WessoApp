@@ -11,16 +11,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { BookingFormData } from '../BookingForm'; // Adjust path as necessary
 
 interface CarTypeOption {
-  value: string;
-  label: string;
+  value: string; // Keep value in English for consistency
+  label: string; // Label in Arabic
   imageUrl: string;
 }
 
 const carTypes: CarTypeOption[] = [
-  { value: 'limousine', label: 'Limousine', imageUrl: 'https://picsum.photos/seed/limo/300/200' },
-  { value: 'sedan', label: 'Sedan (Mlaki)', imageUrl: 'https://picsum.photos/seed/sedan/300/200' },
-  { value: 'large', label: 'Large Car', imageUrl: 'https://picsum.photos/seed/large/300/200' },
-  { value: '7seater', label: '7-Seater', imageUrl: 'https://picsum.photos/seed/7seater/300/200' },
+  { value: 'limousine', label: 'ليموزين', imageUrl: 'https://picsum.photos/seed/limo/300/200' },
+  { value: 'sedan', label: 'سيدان (ملاكي)', imageUrl: 'https://picsum.photos/seed/sedan/300/200' },
+  { value: 'large', label: 'سيارة كبيرة', imageUrl: 'https://picsum.photos/seed/large/300/200' },
+  { value: '7seater', label: '7 مقاعد', imageUrl: 'https://picsum.photos/seed/7seater/300/200' },
 ];
 
 interface CarTypeSelectionProps {
@@ -34,14 +34,10 @@ export const CarTypeSelection: FC<CarTypeSelectionProps> = ({ errors, onNext }) 
 
   const handleSelect = async (value: string) => {
     setValue('carType', value, { shouldValidate: true });
-    // Reset car model when type changes
     resetField('carModel', { defaultValue: '' });
-     // Ensure validation is triggered for carModel if it becomes required
-     // Add a small delay to ensure state updates before validation/next step
      await new Promise(resolve => setTimeout(resolve, 0));
      setValue('carModel', '', { shouldValidate: true });
 
-     // If onNext prop is provided, call it to potentially advance the step
      if (onNext) {
        await onNext();
      }
@@ -49,8 +45,8 @@ export const CarTypeSelection: FC<CarTypeSelectionProps> = ({ errors, onNext }) 
 
   return (
     <div className="space-y-6">
-      <Label className="text-xl font-semibold text-foreground block mb-4">Select Car Type</Label>
-       <p className="text-sm text-muted-foreground mb-6">Choose the type of vehicle that best suits your needs.</p>
+      <Label className="text-xl font-semibold text-foreground block mb-4">اختر نوع السيارة</Label>
+       <p className="text-sm text-muted-foreground mb-6">اختر نوع السيارة الذي يناسب احتياجاتك.</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {carTypes.map((car) => (
           <motion.div
@@ -61,32 +57,31 @@ export const CarTypeSelection: FC<CarTypeSelectionProps> = ({ errors, onNext }) 
             <Card
               className={cn(
                 'glass-card cursor-pointer transition-all duration-200 ease-in-out overflow-hidden',
-                selectedCarType === car.value ? 'ring-2 ring-primary ring-offset-2 ring-offset-background/50 dark:ring-offset-black/50' : 'ring-0', // Adjusted ring offset for dark mode
-                 errors?.carType ? 'border-destructive' : 'border-white/20 dark:border-black/20' // Use errors prop
+                selectedCarType === car.value ? 'ring-2 ring-primary ring-offset-2 ring-offset-background/50 dark:ring-offset-black/50' : 'ring-0',
+                 errors?.carType ? 'border-destructive' : 'border-white/20 dark:border-black/20'
               )}
               onClick={() => handleSelect(car.value)}
               role="radio"
               aria-checked={selectedCarType === car.value}
-              tabIndex={0} // Make it focusable
-              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleSelect(car.value)} // Basic keyboard selection
+              tabIndex={0}
+              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleSelect(car.value)}
             >
                <input
                  type="radio"
                  id={`carType-${car.value}`}
                  value={car.value}
                  {...register('carType')}
-                 className="sr-only" // Hide the actual radio button
+                 className="sr-only"
                  aria-labelledby={`carType-label-${car.value}`}
                />
               <CardHeader className="p-0 relative h-40">
                 <Image
                   src={car.imageUrl}
-                  alt={car.label}
+                  alt={car.label} // Use Arabic label for alt text
                   layout="fill"
                   objectFit="cover"
                   className="rounded-t-lg"
                 />
-                {/* Optional: Add a subtle overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent rounded-t-lg"></div>
               </CardHeader>
               <CardContent className="p-4">
@@ -96,7 +91,7 @@ export const CarTypeSelection: FC<CarTypeSelectionProps> = ({ errors, onNext }) 
           </motion.div>
         ))}
       </div>
-      {errors?.carType && ( // Use errors prop
+      {errors?.carType && (
         <p className="text-sm font-medium text-destructive mt-2">{errors.carType.message}</p>
       )}
     </div>

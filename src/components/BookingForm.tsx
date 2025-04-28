@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import type { FC } from 'react';
@@ -19,24 +17,24 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 
-// Refined schema: Ensure coordinates are present if address is, unless explicitly handled otherwise
+// Validation messages in Arabic
 const locationDetailSchema = z.object({
-    address: z.string().min(1, "Address is required"),
+    address: z.string().min(1, "العنوان مطلوب"),
     coordinates: z.object({
-        latitude: z.number().optional(), // Coordinates might not be available immediately or if geocoding fails
+        latitude: z.number().optional(),
         longitude: z.number().optional(),
     }).optional(),
 });
 
 const bookingSchema = z.object({
-  carType: z.string().min(1, "Please select a car type"),
-  carModel: z.string().min(1,"Please select a car model"),
-  passengers: z.coerce.number().min(1, "At least 1 passenger").max(7, "Maximum 7 passengers"),
-  bags: z.coerce.number().min(0, "Cannot have negative bags").max(5, "Maximum 5 bags"),
+  carType: z.string().min(1, "الرجاء اختيار نوع السيارة"),
+  carModel: z.string().min(1,"الرجاء اختيار موديل السيارة"),
+  passengers: z.coerce.number().min(1, "راكب واحد على الأقل").max(7, "7 ركاب كحد أقصى"),
+  bags: z.coerce.number().min(0, "لا يمكن أن يكون عدد الحقائب سالباً").max(5, "5 حقائب كحد أقصى"),
   pickupLocation: locationDetailSchema,
   dropoffLocation: locationDetailSchema,
-  fullName: z.string().min(2, "Please enter your full name"),
-  phoneNumber: z.string().min(10, "Please enter a valid phone number").regex(/^\+?[0-9\s\-()]+$/, "Please enter a valid phone number"), // Basic phone format regex
+  fullName: z.string().min(2, "الرجاء إدخال الاسم الكامل"),
+  phoneNumber: z.string().min(10, "الرجاء إدخال رقم هاتف صحيح").regex(/^\+?[0-9\s\-()]+$/, "الرجاء إدخال رقم هاتف صحيح"),
 });
 
 
@@ -45,12 +43,11 @@ export type BookingFormData = z.infer<typeof bookingSchema>;
 // Define field names more robustly for validation triggers
 type StepFieldName = keyof BookingFormData | `${keyof Pick<BookingFormData, 'pickupLocation' | 'dropoffLocation'>}.${keyof BookingFormData['pickupLocation']}`;
 
-
+// Keep IDs in English for simplicity in logic, but components will show Arabic labels
 const steps: { id: string; component: FC<any>; validationFields: StepFieldName[]; autoAdvance?: boolean }[] = [
   { id: 'carType', component: CarTypeSelection, validationFields: ['carType'], autoAdvance: true },
   { id: 'carModel', component: CarModelSelection, validationFields: ['carModel'], autoAdvance: true },
   { id: 'passengers', component: PassengerSelection, validationFields: ['passengers', 'bags'] },
-  // Validate both address and coordinates if available
   { id: 'location', component: LocationSelection, validationFields: ['pickupLocation.address', 'pickupLocation.coordinates', 'dropoffLocation.address', 'dropoffLocation.coordinates'] },
   { id: 'userDetails', component: UserDetails, validationFields: ['fullName', 'phoneNumber'] },
   { id: 'summary', component: OrderSummary, validationFields: [] },
@@ -67,7 +64,7 @@ const BookingForm: FC = () => {
     defaultValues: {
       passengers: 1,
       bags: 1,
-      pickupLocation: { address: '', coordinates: undefined }, // Initialize coordinates as undefined
+      pickupLocation: { address: '', coordinates: undefined },
       dropoffLocation: { address: '', coordinates: undefined },
       fullName: '',
       phoneNumber: '',
@@ -99,7 +96,7 @@ const BookingForm: FC = () => {
             return !!errorObj;
         });
 
-        let errorMessage = "Please fill in all required fields correctly.";
+        let errorMessage = "الرجاء تعبئة جميع الحقول المطلوبة بشكل صحيح.";
         if (firstErrorField) {
              const parts = firstErrorField.split('.');
              let errorObj: any = errors;
@@ -109,14 +106,14 @@ const BookingForm: FC = () => {
              }
              // Handle nested error messages correctly
              if (errorObj && errorObj.message) {
-                 errorMessage = typeof errorObj.message === 'string' ? errorObj.message : "Please check the highlighted fields.";
+                 errorMessage = typeof errorObj.message === 'string' ? errorObj.message : "الرجاء التحقق من الحقول المحددة.";
              } else if (errorObj?.address?.message) { // Check for nested address errors
-                 errorMessage = typeof errorObj.address.message === 'string' ? errorObj.address.message : "Please check the location fields.";
+                 errorMessage = typeof errorObj.address.message === 'string' ? errorObj.address.message : "الرجاء التحقق من حقول الموقع.";
              }
         }
 
         toast({
-            title: "Validation Error",
+            title: "خطأ في التحقق",
             description: errorMessage,
             variant: "destructive",
         });
@@ -152,8 +149,8 @@ const BookingForm: FC = () => {
      if (!isValidForm) {
          console.log("Final validation failed", errors);
          toast({
-             title: "Incomplete Form",
-             description: "Please review the form for errors before submitting.",
+             title: "نموذج غير مكتمل",
+             description: "الرجاء مراجعة النموذج بحثًا عن الأخطاء قبل الإرسال.",
              variant: "destructive",
          });
          // Navigate back to the first step with an error
@@ -178,23 +175,23 @@ const BookingForm: FC = () => {
        const pickupMapLink = getGoogleMapsLink(data.pickupLocation.coordinates) || getGoogleMapsLinkFromAddress(data.pickupLocation.address);
        const dropoffMapLink = getGoogleMapsLink(data.dropoffLocation.coordinates) || getGoogleMapsLinkFromAddress(data.dropoffLocation.address);
 
-       // Format the message for WhatsApp
+       // Format the message for WhatsApp in Arabic
        const message = `
-*New ClearRide Booking Request:*
+*طلب حجز جديد من كلير رايد:*
 -----------------------------
-*Car Type:* ${data.carType}
-*Car Model:* ${data.carModel}
-*Passengers:* ${data.passengers}
-*Bags:* ${data.bags}
+*نوع السيارة:* ${data.carType}
+*موديل السيارة:* ${data.carModel}
+*عدد الركاب:* ${data.passengers}
+*عدد الحقائب:* ${data.bags}
 -----------------------------
-*Pickup:* ${data.pickupLocation.address}${pickupMapLink ? `\n🗺️ Map: ${pickupMapLink}` : ''}
+*مكان الانطلاق:* ${data.pickupLocation.address}${pickupMapLink ? `\n📍 رابط الخريطة: ${pickupMapLink}` : ''}
 
-*Dropoff:* ${data.dropoffLocation.address}${dropoffMapLink ? `\n🗺️ Map: ${dropoffMapLink}` : ''}
+*وجهة الوصول:* ${data.dropoffLocation.address}${dropoffMapLink ? `\n🏁 رابط الخريطة: ${dropoffMapLink}` : ''}
 -----------------------------
-*Client Name:* ${data.fullName}
-*Client Phone:* ${data.phoneNumber}
+*اسم العميل:* ${data.fullName}
+*رقم هاتف العميل:* ${data.phoneNumber}
 -----------------------------
-Please confirm these details.
+يرجى تأكيد هذه التفاصيل.
        `.trim().replace(/\n\s+/g, '\n'); // Clean up extra whitespace
 
        const encodedMessage = encodeURIComponent(message);
@@ -202,8 +199,8 @@ Please confirm these details.
        const whatsappUrl = `https://wa.me/${targetPhoneNumber}?text=${encodedMessage}`;
 
        toast({
-         title: "Booking Ready!",
-         description: "Redirecting to WhatsApp to send your request...",
+         title: "الحجز جاهز!",
+         description: "جاري إعادة توجيهك إلى واتساب لإرسال طلبك...",
        });
 
        // Redirect the user to WhatsApp in a new tab/window
@@ -212,8 +209,8 @@ Please confirm these details.
      } catch (error) {
        console.error("Error preparing WhatsApp redirect:", error);
        toast({
-         title: "Submission Error",
-         description: "Could not prepare your booking request for WhatsApp. Please try again.",
+         title: "خطأ في الإرسال",
+         description: "تعذر تحضير طلب الحجز الخاص بك لواتساب. يرجى المحاولة مرة أخرى.",
          variant: "destructive",
        });
      }
@@ -223,25 +220,6 @@ Please confirm these details.
   const shouldAutoAdvance = steps[currentStep].autoAdvance && currentStep < steps.length - 1;
   const progressPercentage = ((currentStep + 1) / steps.length) * 100;
 
-  // Watch for changes in auto-advancing fields to trigger next step
-  // This is an alternative if passing onNext prop becomes complex
-  // React.useEffect(() => {
-  //   const currentStepConfig = steps[currentStep];
-  //   if (currentStepConfig.autoAdvance) {
-  //     const subscription = watch((value, { name, type }) => {
-  //       if (currentStepConfig.validationFields.includes(name as StepFieldName) && type === 'change') {
-  //         // Debounce or add a small delay to avoid rapid triggers
-  //         const timer = setTimeout(() => {
-  //           handleNext();
-  //         }, 100); // Adjust delay as needed
-  //         return () => clearTimeout(timer);
-  //       }
-  //     });
-  //     return () => subscription.unsubscribe();
-  //   }
-  // }, [currentStep, watch, handleNext]);
-
-
   return (
     <FormProvider {...methods}>
       <form
@@ -250,16 +228,17 @@ Please confirm these details.
         aria-live="polite"
         noValidate
       >
-         <Progress value={progressPercentage} className="w-full mb-6 h-2 bg-white/20 dark:bg-black/20 [&>div]:bg-primary" />
+        {/* Adjust progress bar direction for RTL */}
+         <Progress value={progressPercentage} className="w-full mb-6 h-2 bg-white/20 dark:bg-black/20 [&>div]:bg-primary" dir="rtl" />
 
           <motion.div
             key={currentStep} // Ensures component remounts on step change for animation
-            initial={{ opacity: 0, x: currentStep > 0 ? 50 : -50 }}
+            // Adjust animation direction for RTL if needed (x: positive for previous, negative for next)
+            initial={{ opacity: 0, x: currentStep > 0 ? -50 : 50 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -50 }} // Animate exit as well
+            exit={{ opacity: 0, x: 50 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
           >
-             {/* Pass handleNext only to components that should auto-advance AND error state */}
              <CurrentComponent
                 errors={errors} // Pass errors down to step components
                 {...(shouldAutoAdvance && { onNext: handleNext })}
@@ -273,20 +252,19 @@ Please confirm these details.
             onClick={handlePrevious}
             disabled={currentStep === 0}
             className="glass-button disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Previous Step"
+            aria-label="الخطوة السابقة"
           >
-            Previous
+            السابق
           </Button>
 
-          {/* Hide Next button for auto-advancing steps and the summary step */}
           {!shouldAutoAdvance && currentStep !== steps.length - 1 && (
              <Button
                type="button"
                onClick={handleNext} // Standard next button triggers validation via handleNext
                className="glass-button bg-accent/80 hover:bg-accent text-accent-foreground"
-               aria-label="Next Step"
+               aria-label="الخطوة التالية"
              >
-               Next
+               التالي
              </Button>
            )}
 
@@ -295,15 +273,15 @@ Please confirm these details.
               type="submit"
               disabled={isSubmitting}
               className="glass-button bg-primary/80 hover:bg-primary text-primary-foreground px-6 py-3 text-lg font-semibold shadow-lg hover:shadow-xl active:scale-95"
-              aria-label="Confirm and Send via WhatsApp"
+              aria-label="تأكيد وإرسال عبر واتساب"
             >
-              {isSubmitting ? "Processing..." : "Confirm & Send via WhatsApp"}
+              {isSubmitting ? "جاري المعالجة..." : "تأكيد وإرسال عبر واتساب"}
             </Button>
           )}
         </div>
          {/* Debug: Display current form errors */}
          {/* {Object.keys(errors).length > 0 && (
-            <pre className="text-xs text-destructive mt-4 p-2 bg-destructive/10 rounded">
+            <pre className="text-xs text-destructive mt-4 p-2 bg-destructive/10 rounded ltr">
                 Errors: {JSON.stringify(errors, null, 2)}
             </pre>
          )} */}
