@@ -24,15 +24,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // Add lang="ar" and dir="rtl"
-    <html lang="ar" dir="rtl" suppressHydrationWarning>
+    // Add lang="ar" and dir="rtl" and force dark theme
+    <html lang="ar" dir="rtl" className="dark" suppressHydrationWarning>
       {/* Apply the font variable if using a custom Arabic font */}
       {/* <body className={`${cairo.variable} font-sans antialiased`}> */}
       <body className={`antialiased`}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="dark" // Default to dark theme
+          enableSystem={false} // Disable system preference detection
           disableTransitionOnChange
         >
           {children}

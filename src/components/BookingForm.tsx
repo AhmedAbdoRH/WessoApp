@@ -12,8 +12,8 @@ import { CarTypeSelection } from "./steps/CarTypeSelection";
 import { CarModelSelection } from "./steps/CarModelSelection";
 import { PassengerSelection } from "./steps/PassengerSelection";
 import { LocationSelection } from "./steps/LocationSelection";
-// Import the new step components
-import { FullNameInput } from "./steps/FullNameInput";
+// Import the updated step components
+import { FirstNameInput } from "./steps/FirstNameInput"; // Renamed from FullNameInput
 import { PhoneNumberInput } from "./steps/PhoneNumberInput";
 import { OrderSummary } from "./steps/OrderSummary";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,7 @@ const bookingSchema = z.object({
   bags: z.coerce.number().min(0, "لا يمكن أن يكون عدد الحقائب سالباً").max(5, "5 حقائب كحد أقصى"),
   pickupLocation: locationDetailSchema,
   dropoffLocation: locationDetailSchema,
-  fullName: z.string().min(2, "الرجاء إدخال الاسم الكامل"),
+  firstName: z.string().min(2, "الرجاء إدخال الاسم الأول"), // Changed from fullName
   phoneNumber: z.string().min(10, "الرجاء إدخال رقم هاتف صحيح").regex(/^\+?[0-9\s\-()]+$/, "الرجاء إدخال رقم هاتف صحيح"),
 });
 
@@ -44,15 +44,17 @@ const bookingSchema = z.object({
 export type BookingFormData = z.infer<typeof bookingSchema>;
 
 // Define field names more robustly for validation triggers
-type StepFieldName = keyof BookingFormData | `${keyof Pick<BookingFormData, 'pickupLocation' | 'dropoffLocation'>}.${keyof BookingFormData['pickupLocation']}`;
+// Update field name from fullName to firstName
+type StepFieldName = Exclude<keyof BookingFormData, 'fullName'> | 'firstName' | `${keyof Pick<BookingFormData, 'pickupLocation' | 'dropoffLocation'>}.${keyof BookingFormData['pickupLocation']}`;
 
-// Updated steps array with FullName and PhoneNumber as separate steps
+
+// Updated steps array with FirstName and PhoneNumber as separate steps
 const steps: { id: string; component: FC<any>; validationFields: StepFieldName[]; autoAdvance?: boolean }[] = [
   { id: 'carType', component: CarTypeSelection, validationFields: ['carType'], autoAdvance: true },
   { id: 'carModel', component: CarModelSelection, validationFields: ['carModel'], autoAdvance: true },
   { id: 'passengers', component: PassengerSelection, validationFields: ['passengers', 'bags'] },
   { id: 'location', component: LocationSelection, validationFields: ['pickupLocation.address', 'pickupLocation.coordinates', 'dropoffLocation.address', 'dropoffLocation.coordinates'] },
-  { id: 'fullName', component: FullNameInput, validationFields: ['fullName'] }, // New step for Full Name
+  { id: 'firstName', component: FirstNameInput, validationFields: ['firstName'] }, // Updated step for First Name
   { id: 'phoneNumber', component: PhoneNumberInput, validationFields: ['phoneNumber'] }, // New step for Phone Number
   { id: 'summary', component: OrderSummary, validationFields: [] }, // Summary is the last step
 ];
@@ -70,7 +72,7 @@ const BookingForm: FC = () => {
       bags: 1,
       pickupLocation: { address: '', coordinates: undefined },
       dropoffLocation: { address: '', coordinates: undefined },
-      fullName: '',
+      firstName: '', // Changed from fullName
       phoneNumber: '',
       carType: '',
       carModel: '',
@@ -192,7 +194,7 @@ const BookingForm: FC = () => {
 
 *وجهة الوصول:* ${data.dropoffLocation.address}${dropoffMapLink ? `\n🏁 رابط الخريطة: ${dropoffMapLink}` : ''}
 -----------------------------
-*اسم العميل:* ${data.fullName}
+*اسم العميل:* ${data.firstName}
 *رقم هاتف العميل:* ${data.phoneNumber}
 -----------------------------
 يرجى تأكيد هذه التفاصيل.
@@ -251,41 +253,49 @@ const BookingForm: FC = () => {
           </motion.div>
 
 
-        {/* Swapped button order for RTL layout */}
-        <div className="flex justify-between mt-8 pt-4 border-t border-white/20 dark:border-black/20">
-           {/* Next/Submit Button on the Left */}
-           {currentStep === steps.length - 1 ? (
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="glass-button bg-primary/80 hover:bg-primary text-primary-foreground px-6 py-3 text-lg font-semibold shadow-lg hover:shadow-xl active:scale-95"
-                aria-label="تأكيد وإرسال عبر واتساب"
-              >
-                {isSubmitting ? "جاري المعالجة..." : "تأكيد وإرسال"}
-              </Button>
-            ) : (
-              !shouldAutoAdvance && (
-                 <Button
-                   type="button"
-                   onClick={handleNext} // Standard next button triggers validation via handleNext
-                   className="glass-button bg-accent/80 hover:bg-accent text-accent-foreground"
-                   aria-label="الخطوة التالية"
-                 >
-                   التالي
-                 </Button>
-               )
-            )}
+        {/* Button layout: Previous on left, Next/Submit centered */}
+        <div className="flex justify-between items-center mt-8 pt-4 border-t border-white/20 dark:border-black/20 relative">
+           {/* Previous Button on the Left */}
+           <Button
+             type="button"
+             onClick={handlePrevious}
+             disabled={currentStep === 0}
+             className="glass-button disabled:opacity-50 disabled:cursor-not-allowed absolute left-0" // Position left
+             aria-label="الخطوة السابقة"
+           >
+             السابق
+           </Button>
 
-           {/* Previous Button on the Right */}
-          <Button
-            type="button"
-            onClick={handlePrevious}
-            disabled={currentStep === 0}
-            className="glass-button disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="الخطوة السابقة"
-          >
-            السابق
-          </Button>
+           {/* Spacer to push Next/Submit to center */}
+           <div className="flex-grow"></div>
+
+           {/* Next/Submit Button Centered */}
+           <div className="flex justify-center flex-grow">
+             {currentStep === steps.length - 1 ? (
+               <Button
+                 type="submit"
+                 disabled={isSubmitting}
+                 className="glass-button bg-primary/80 hover:bg-primary text-primary-foreground px-6 py-3 text-lg font-semibold shadow-lg hover:shadow-xl active:scale-95"
+                 aria-label="تأكيد وإرسال عبر واتساب"
+               >
+                 {isSubmitting ? "جاري المعالجة..." : "تأكيد وإرسال"}
+               </Button>
+             ) : (
+               !shouldAutoAdvance && (
+                  <Button
+                    type="button"
+                    onClick={handleNext} // Standard next button triggers validation via handleNext
+                    className="glass-button bg-accent/80 hover:bg-accent text-accent-foreground"
+                    aria-label="الخطوة التالية"
+                  >
+                    التالي
+                  </Button>
+                )
+             )}
+           </div>
+
+            {/* Spacer to balance the layout */}
+           <div className="flex-grow"></div>
 
         </div>
          {/* Debug: Display current form errors */}
@@ -300,4 +310,3 @@ const BookingForm: FC = () => {
 };
 
 export default BookingForm;
-

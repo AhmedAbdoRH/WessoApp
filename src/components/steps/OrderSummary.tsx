@@ -57,7 +57,7 @@ export const OrderSummary: FC<{ errors?: any }> = () => {
     })
   };
 
-  // Arabic labels
+  // Arabic labels - Use firstName instead of fullName
   const summaryItems = [
     { icon: Car, label: "نوع السيارة", value: getArabicCarTypeName(formData.carType) || "لم يتم الاختيار" },
     { icon: Car, label: "الموديل", value: getCarModelLabel(formData.carType, formData.carModel) },
@@ -75,7 +75,7 @@ export const OrderSummary: FC<{ errors?: any }> = () => {
       value: formData.dropoffLocation?.address || "لم يتم التحديد",
       link: dropoffLink
     },
-    { icon: User, label: "الاسم", value: formData.fullName },
+    { icon: User, label: "الاسم", value: formData.firstName }, // Changed from fullName to firstName
     { icon: Phone, label: "الهاتف", value: formData.phoneNumber },
   ];
 
