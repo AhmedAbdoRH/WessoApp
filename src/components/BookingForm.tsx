@@ -223,6 +223,7 @@ const BookingForm: FC = () => {
 
   const CurrentComponent = steps[currentStep].component;
   const shouldAutoAdvance = steps[currentStep].autoAdvance && currentStep < steps.length - 1;
+  const isPhoneNumberStep = steps[currentStep]?.id === 'phoneNumber';
   
   const progressPercentage = ((currentStep + 1) / steps.length) * 100;
 
@@ -279,9 +280,9 @@ const BookingForm: FC = () => {
                     type="button"
                     onClick={handleNext}
                     className="glass-button bg-accent/80 hover:bg-accent text-accent-foreground"
-                    aria-label="الخطوة التالية"
+                    aria-label={isPhoneNumberStep ? "التأكيد والانتهاء والانتقال إلى ملخص الطلب" : "الخطوة التالية"}
                   >
-                    التالي
+                    {isPhoneNumberStep ? "التأكيد والانتهاء" : "التالي"}
                   </Button>
                 )
              )}
