@@ -1,56 +1,98 @@
+
 "use client";
 
 import type { FC } from 'react';
 import React from 'react';
-import { useFormContext, Controller } from 'react-hook-form';
+import { useFormContext } from 'react-hook-form';
 import { Label } from '@/components/ui/label';
-import { RadioGroup } from '@/components/ui/radio-group';
+import { Card, CardContent } from '@/components/ui/card';
+import { User, Users, Briefcase, Luggage, Package } from 'lucide-react'; // Using Briefcase and Luggage as proxies for Bag
 import { cn } from '@/lib/utils';
 import type { BookingFormData } from '../BookingForm';
+import { motion } from 'framer-motion';
 
-const passengerOptions = [1, 2, 3, 4];
-const bagOptions = [0, 1, 2, 3];
+const passengerOptions = [1, 2, 3, 4, 5, 6, 7]; // Extended to match schema max
+const bagOptions = [0, 1, 2, 3, 4, 5]; // Extended to match schema max
+
+const getPassengerLabel = (num: number): string => {
+  if (num === 1) return 'راكب واحد';
+  if (num === 2) return 'راكبان';
+  return `${num} ركاب`;
+};
+
+const getBagLabel = (num: number): string => {
+  if (num === 0) return 'بدون حقائب';
+  if (num === 1) return 'حقيبة واحدة';
+  if (num === 2) return 'حقيبتان';
+  if (num >= 3 && num <= 10) return `${num} حقائب`; // Arabic plural for 3-10
+  return `${num} حقيبة`; // Fallback for numbers > 10 or specific cases
+};
+
+const PassengerIcon: FC<{ count: number }> = ({ count }) => {
+  if (count === 1) return <User className="w-8 h-8 sm:w-10 sm:h-10 text-primary" />;
+  return <Users className="w-8 h-8 sm:w-10 sm:h-10 text-primary" />;
+};
+
+const BagIcon: FC<{ count: number }> = ({ count }) => {
+  if (count === 0) return <Package className="w-8 h-8 sm:w-10 sm:h-10 text-primary" data-ai-hint="no package" />; // Icon for no bags
+  if (count === 1) return <Briefcase className="w-8 h-8 sm:w-10 sm:h-10 text-primary" />;
+  return <Luggage className="w-8 h-8 sm:w-10 sm:h-10 text-primary" />;
+};
 
 export const PassengerSelection: FC<{ errors: any }> = ({ errors }) => {
-  const { control } = useFormContext<BookingFormData>();
+  const { setValue, watch } = useFormContext<BookingFormData>();
+  const selectedPassengers = watch('passengers');
+  const selectedBags = watch('bags');
+
+  const handlePassengerSelect = (num: number) => {
+    setValue('passengers', num, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+  };
+
+  const handleBagSelect = (num: number) => {
+    setValue('bags', num, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+  };
+
+  const cardVariants = {
+    hidden: { opacity: 0, scale: 0.9 },
+    visible: { opacity: 1, scale: 1 },
+  };
 
   return (
     <div className="space-y-8">
       <div>
         <Label className="text-xl font-semibold text-foreground block mb-4">عدد الركاب</Label>
-         <p className="text-sm text-muted-foreground mb-6">كم عدد الأشخاص المسافرين؟</p>
-        <Controller
-          name="passengers"
-          control={control}
-          render={({ field }) => (
-            <RadioGroup
-              onValueChange={(value) => field.onChange(parseInt(value))}
-              value={String(field.value)}
-              className="flex flex-wrap gap-4"
+        <p className="text-sm text-muted-foreground mb-6">كم عدد الأشخاص المسافرين؟</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+          {passengerOptions.map((num) => (
+            <motion.div
+              key={`passenger-${num}`}
+              variants={cardVariants}
+              initial="hidden"
+              animate="visible"
+              transition={{ duration: 0.2, delay: num * 0.05 }}
+              whileHover={{ scale: 1.05, transition: { duration: 0.15 } }}
+              whileTap={{ scale: 0.95 }}
             >
-              {passengerOptions.map((num) => (
-                // Adjust space for RTL: space-x-reverse space-x-2 -> space-x-2 mr-2 for label
-                <div key={`passenger-${num}`} className="flex items-center space-x-2 relative">
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={field.value === num}
-                      onClick={() => field.onChange(num)}
-                      className={cn(
-                        'glass-radio relative flex items-center justify-center',
-                        field.value === num ? 'bg-primary border-primary' : 'bg-white/20 dark:bg-black/20 border-white/50 dark:border-black/50'
-                      )}
-                      aria-labelledby={`passenger-label-${num}`}
-                    >
-                         {field.value === num && <div className="w-2 h-2 bg-primary-foreground rounded-full"></div>}
-                    </button>
-                  {/* Adjust margin for RTL: mr-2 */}
-                  <Label id={`passenger-label-${num}`} htmlFor={`passenger-${num}`} className="glass-radio-label mr-2">{num} {num === 1 ? 'راكب' : 'ركاب'}</Label>
-                </div>
-              ))}
-            </RadioGroup>
-          )}
-        />
+              <Card
+                className={cn(
+                  'glass-card cursor-pointer transition-all duration-200 ease-in-out aspect-square flex flex-col items-center justify-center text-center p-2 sm:p-3',
+                  selectedPassengers === num ? 'ring-2 ring-primary ring-offset-2 ring-offset-background/50 dark:ring-offset-black/50 shadow-lg' : 'ring-0 shadow-md hover:shadow-lg',
+                  errors?.passengers ? 'border-destructive' : 'border-white/20 dark:border-black/20'
+                )}
+                onClick={() => handlePassengerSelect(num)}
+                role="radio"
+                aria-checked={selectedPassengers === num}
+                tabIndex={0}
+                onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handlePassengerSelect(num)}
+              >
+                <CardContent className="p-0 flex flex-col items-center justify-center gap-2">
+                  <PassengerIcon count={num} />
+                  <span className="text-sm sm:text-base font-medium text-foreground">{getPassengerLabel(num)}</span>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
         {errors?.passengers && (
           <p className="text-sm font-medium text-destructive mt-2">{errors.passengers.message}</p>
         )}
@@ -58,38 +100,38 @@ export const PassengerSelection: FC<{ errors: any }> = ({ errors }) => {
 
       <div>
         <Label className="text-xl font-semibold text-foreground block mb-4">عدد الحقائب</Label>
-         <p className="text-sm text-muted-foreground mb-6">تقدير كمية الأمتعة.</p>
-        <Controller
-          name="bags"
-          control={control}
-          render={({ field }) => (
-             <RadioGroup
-               onValueChange={(value) => field.onChange(parseInt(value))}
-               value={String(field.value)}
-               className="flex flex-wrap gap-4"
-             >
-               {bagOptions.map((num) => (
-                 <div key={`bag-${num}`} className="flex items-center space-x-2 relative">
-                   <button
-                     type="button"
-                     role="radio"
-                     aria-checked={field.value === num}
-                     onClick={() => field.onChange(num)}
-                     className={cn(
-                       'glass-radio relative flex items-center justify-center',
-                       field.value === num ? 'bg-primary border-primary' : 'bg-white/20 dark:bg-black/20 border-white/50 dark:border-black/50'
-                     )}
-                     aria-labelledby={`bag-label-${num}`}
-                   >
-                      {field.value === num && <div className="w-2 h-2 bg-primary-foreground rounded-full"></div>}
-                   </button>
-                   {/* Adjust margin for RTL: mr-2 */}
-                   <Label id={`bag-label-${num}`} htmlFor={`bag-${num}`} className="glass-radio-label mr-2">{num} {num === 0 ? 'حقائب' : num === 1 ? 'حقيبة' : num === 2 ? 'حقيبتان' : 'حقائب'}</Label>
-                 </div>
-               ))}
-             </RadioGroup>
-          )}
-        />
+        <p className="text-sm text-muted-foreground mb-6">تقدير كمية الأمتعة.</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+          {bagOptions.map((num) => (
+            <motion.div
+              key={`bag-${num}`}
+              variants={cardVariants}
+              initial="hidden"
+              animate="visible"
+              transition={{ duration: 0.2, delay: num * 0.05 }}
+              whileHover={{ scale: 1.05, transition: { duration: 0.15 } }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Card
+                className={cn(
+                  'glass-card cursor-pointer transition-all duration-200 ease-in-out aspect-square flex flex-col items-center justify-center text-center p-2 sm:p-3',
+                  selectedBags === num ? 'ring-2 ring-primary ring-offset-2 ring-offset-background/50 dark:ring-offset-black/50 shadow-lg' : 'ring-0 shadow-md hover:shadow-lg',
+                  errors?.bags ? 'border-destructive' : 'border-white/20 dark:border-black/20'
+                )}
+                onClick={() => handleBagSelect(num)}
+                role="radio"
+                aria-checked={selectedBags === num}
+                tabIndex={0}
+                onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleBagSelect(num)}
+              >
+                <CardContent className="p-0 flex flex-col items-center justify-center gap-2">
+                  <BagIcon count={num} />
+                  <span className="text-sm sm:text-base font-medium text-foreground">{getBagLabel(num)}</span>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
         {errors?.bags && (
           <p className="text-sm font-medium text-destructive mt-2">{errors.bags.message}</p>
         )}
@@ -97,3 +139,4 @@ export const PassengerSelection: FC<{ errors: any }> = ({ errors }) => {
     </div>
   );
 };
+
