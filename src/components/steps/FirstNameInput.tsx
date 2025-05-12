@@ -29,6 +29,7 @@ export const FirstNameInput: FC<{ errors: any }> = ({ errors }) => {
            id="firstName" // Update id
            {...register('firstName')} // Register 'firstName'
            placeholder="أدخل اسمك الأول هنا" // Update placeholder
+           autoFocus // Add autoFocus for automatic focus
            // Adjust padding for RTL: pr-10
            className={cn(
               "glass-input pr-10 h-12 text-base", // Added h-12 and text-base for better visibility
@@ -43,3 +44,4 @@ export const FirstNameInput: FC<{ errors: any }> = ({ errors }) => {
     </div>
   );
 };
+

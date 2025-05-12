@@ -28,6 +28,7 @@ export const PhoneNumberInput: FC<{ errors: any }> = ({ errors }) => {
              dir="ltr"
              {...register('phoneNumber')}
              placeholder="مثال: +201XXXXXXXXX"
+             autoFocus // Add autoFocus for automatic focus
              // Adjust padding for RTL: pr-10, ensure text alignment is correct for phone numbers
              className={cn(
                "glass-input pr-10 text-left h-12 text-base", // Added h-12, text-base, and text-left
@@ -42,3 +43,4 @@ export const PhoneNumberInput: FC<{ errors: any }> = ({ errors }) => {
     </div>
   );
 };
+

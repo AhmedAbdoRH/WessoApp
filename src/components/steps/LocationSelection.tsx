@@ -17,12 +17,15 @@ import { useToast } from '@/hooks/use-toast';
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
 // --- Autocomplete Component ---
-function LocationAutocomplete({ fieldName, errors, onPlaceSelect, label }: {
+interface LocationAutocompleteProps {
   fieldName: `pickupLocation.address` | `dropoffLocation.address`;
   errors: any;
   onPlaceSelect: (type: 'pickup' | 'dropoff', place: google.maps.places.PlaceResult | null, addressString: string) => void;
   label: string; // Label in Arabic
-}) {
+  autoFocus?: boolean; // New prop for autoFocus
+}
+
+function LocationAutocomplete({ fieldName, errors, onPlaceSelect, label, autoFocus }: LocationAutocompleteProps) {
   const { control, setValue } = useFormContext<BookingFormData>();
   const places = useMapsLibrary('places');
   const [autocomplete, setAutocomplete] = React.useState<google.maps.places.Autocomplete | null>(null);
@@ -142,6 +145,7 @@ function LocationAutocomplete({ fieldName, errors, onPlaceSelect, label }: {
              id={fieldName}
              {...field} // Use field directly for value and onChange
              placeholder={`أدخل عنوان ${label}`}
+             autoFocus={autoFocus} // Pass autoFocus prop to Input
              // Adjust padding for RTL: pr-10 instead of pl-10
              className={cn("glass-input pr-10 h-12 text-base", hasError ? "border-destructive" : "")}
              aria-invalid={hasError ? "true" : "false"}
@@ -337,6 +341,7 @@ export const LocationSelection: FC<{ errors: any }> = ({ errors }) => {
                       <Input
                           id="pickupLocation.address"
                           {...field}
+                          autoFocus // AutoFocus for manual input as well
                           placeholder="أدخل عنوان الانطلاق يدويًا"
                           className={cn("glass-input pr-10 h-12 text-base", errors?.pickupLocation?.address ? "border-destructive" : "")}
                           onBlur={() => trigger('pickupLocation.address')}
@@ -413,6 +418,7 @@ export const LocationSelection: FC<{ errors: any }> = ({ errors }) => {
                    errors={errors}
                    onPlaceSelect={handleLocationSelect}
                    label="الانطلاق"
+                   autoFocus // Enable autoFocus for pickup location
                   />
              </div>
              {/* Access nested error correctly */}
@@ -435,6 +441,7 @@ export const LocationSelection: FC<{ errors: any }> = ({ errors }) => {
                    errors={errors}
                    onPlaceSelect={handleLocationSelect}
                    label="الوصول"
+                   // No autoFocus for dropoff location
                  />
               </div>
              {/* Access nested error correctly */}
@@ -450,3 +457,4 @@ export const LocationSelection: FC<{ errors: any }> = ({ errors }) => {
     </div>
   );
 };
+

@@ -67,14 +67,14 @@ const BookingForm: FC = () => {
     resolver: zodResolver(bookingSchema),
     mode: "onChange", 
     defaultValues: {
-      passengers: 1,
-      bags: 1,
+      carType: '',
+      carModel: '',
+      passengers: undefined as number | undefined, // Remove pre-selection
+      bags: undefined as number | undefined,       // Remove pre-selection
       pickupLocation: { address: '', coordinates: undefined },
       dropoffLocation: { address: '', coordinates: undefined },
       firstName: '', 
       phoneNumber: '',
-      carType: '',
-      carModel: '',
     },
   });
 
@@ -280,7 +280,7 @@ const BookingForm: FC = () => {
                   <Button
                     type="button"
                     onClick={handleNext}
-                    className="glass-button bg-accent/80 hover:bg-accent text-primary-foreground" 
+                    className="glass-button bg-accent/80 hover:bg-accent text-accent-foreground" 
                     aria-label={isPhoneNumberStep ? "التأكيد والانتهاء والانتقال إلى ملخص الطلب" : "الخطوة التالية"}
                   >
                     {isPhoneNumberStep ? "التأكيد والانتهاء" : "التالي"}
