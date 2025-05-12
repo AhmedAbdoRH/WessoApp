@@ -11,21 +11,25 @@ import { cn } from '@/lib/utils';
 import type { BookingFormData } from '../BookingForm';
 import { motion } from 'framer-motion';
 
-const passengerOptions = [1, 2, 3, 4, 5, 6, 7]; // Extended to match schema max
-const bagOptions = [0, 1, 2, 3, 4, 5]; // Extended to match schema max
+// Updated to first four options
+const passengerOptions = [1, 2, 3, 4];
+const bagOptions = [0, 1, 2, 3];
 
 const getPassengerLabel = (num: number): string => {
   if (num === 1) return 'راكب واحد';
   if (num === 2) return 'راكبان';
-  return `${num} ركاب`;
+  // For 3 and 4, Arabic uses "ركاب"
+  if (num >= 3 && num <= 10) return `${num} ركاب`; // Covers 3 and 4
+  return `${num} راكب`; // Fallback, though not expected with current options
 };
 
 const getBagLabel = (num: number): string => {
   if (num === 0) return 'بدون حقائب';
   if (num === 1) return 'حقيبة واحدة';
   if (num === 2) return 'حقيبتان';
-  if (num >= 3 && num <= 10) return `${num} حقائب`; // Arabic plural for 3-10
-  return `${num} حقيبة`; // Fallback for numbers > 10 or specific cases
+   // For 3, Arabic uses "حقائب"
+  if (num >= 3 && num <= 10) return `${num} حقائب`; // Covers 3
+  return `${num} حقيبة`; // Fallback
 };
 
 const PassengerIcon: FC<{ count: number }> = ({ count }) => {
@@ -35,8 +39,8 @@ const PassengerIcon: FC<{ count: number }> = ({ count }) => {
 
 const BagIcon: FC<{ count: number }> = ({ count }) => {
   if (count === 0) return <Package className="w-8 h-8 sm:w-10 sm:h-10 text-primary" data-ai-hint="no package" />; // Icon for no bags
-  if (count === 1) return <Briefcase className="w-8 h-8 sm:w-10 sm:h-10 text-primary" />;
-  return <Luggage className="w-8 h-8 sm:w-10 sm:h-10 text-primary" />;
+  if (count === 1) return <Briefcase className="w-8 h-8 sm:w-10 sm:h-10 text-primary" data-ai-hint="single briefcase" />;
+  return <Luggage className="w-8 h-8 sm:w-10 sm:h-10 text-primary" data-ai-hint="multiple luggage" />;
 };
 
 export const PassengerSelection: FC<{ errors: any }> = ({ errors }) => {

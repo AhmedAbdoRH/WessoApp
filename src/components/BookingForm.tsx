@@ -7,21 +7,20 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, FormProvider, type SubmitHandler } from "react-hook-form";
 import * as z from "zod";
 import { motion } from "framer-motion";
-import { ArrowLeft } from 'lucide-react'; // Import ArrowLeft icon
+import { ArrowLeft } from 'lucide-react'; 
 
 import { CarTypeSelection } from "./steps/CarTypeSelection";
 import { CarModelSelection } from "./steps/CarModelSelection";
 import { PassengerSelection } from "./steps/PassengerSelection";
 import { LocationSelection } from "./steps/LocationSelection";
-// Import the updated step components
-import { FirstNameInput } from "./steps/FirstNameInput"; // Renamed from FullNameInput
+import { FirstNameInput } from "./steps/FirstNameInput"; 
 import { PhoneNumberInput } from "./steps/PhoneNumberInput";
 import { OrderSummary } from "./steps/OrderSummary";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 
-// Validation messages in Arabic
+
 const locationDetailSchema = z.object({
     address: z.string().min(1, "العنوان مطلوب"),
     coordinates: z.object({
@@ -33,31 +32,30 @@ const locationDetailSchema = z.object({
 const bookingSchema = z.object({
   carType: z.string().min(1, "الرجاء اختيار نوع السيارة"),
   carModel: z.string().min(1,"الرجاء اختيار موديل السيارة"),
-  passengers: z.coerce.number().min(1, "راكب واحد على الأقل").max(7, "7 ركاب كحد أقصى"),
-  bags: z.coerce.number().min(0, "لا يمكن أن يكون عدد الحقائب سالباً").max(5, "5 حقائب كحد أقصى"),
+  passengers: z.coerce.number().min(1, "راكب واحد على الأقل").max(4, "4 ركاب كحد أقصى"), // Updated max to 4
+  bags: z.coerce.number().min(0, "لا يمكن أن يكون عدد الحقائب سالباً").max(3, "3 حقائب كحد أقصى"), // Updated max to 3
   pickupLocation: locationDetailSchema,
   dropoffLocation: locationDetailSchema,
-  firstName: z.string().min(2, "الرجاء إدخال الاسم الأول"), // Changed from fullName
+  firstName: z.string().min(2, "الرجاء إدخال الاسم الأول"), 
   phoneNumber: z.string().min(10, "الرجاء إدخال رقم هاتف صحيح").regex(/^\+?[0-9\s\-()]+$/, "الرجاء إدخال رقم هاتف صحيح"),
 });
 
 
 export type BookingFormData = z.infer<typeof bookingSchema>;
 
-// Define field names more robustly for validation triggers
-// Update field name from fullName to firstName
+
 type StepFieldName = Exclude<keyof BookingFormData, 'fullName'> | 'firstName' | `${keyof Pick<BookingFormData, 'pickupLocation' | 'dropoffLocation'>}.${keyof BookingFormData['pickupLocation']}`;
 
 
-// Updated steps array with FirstName and PhoneNumber as separate steps
+
 const steps: { id: string; component: FC<any>; validationFields: StepFieldName[]; autoAdvance?: boolean }[] = [
   { id: 'carType', component: CarTypeSelection, validationFields: ['carType'], autoAdvance: true },
   { id: 'carModel', component: CarModelSelection, validationFields: ['carModel'], autoAdvance: true },
   { id: 'passengers', component: PassengerSelection, validationFields: ['passengers', 'bags'] },
   { id: 'location', component: LocationSelection, validationFields: ['pickupLocation.address', 'pickupLocation.coordinates', 'dropoffLocation.address', 'dropoffLocation.coordinates'] },
-  { id: 'firstName', component: FirstNameInput, validationFields: ['firstName'] }, // Updated step for First Name
-  { id: 'phoneNumber', component: PhoneNumberInput, validationFields: ['phoneNumber'] }, // New step for Phone Number
-  { id: 'summary', component: OrderSummary, validationFields: [] }, // Summary is the last step
+  { id: 'firstName', component: FirstNameInput, validationFields: ['firstName'] }, 
+  { id: 'phoneNumber', component: PhoneNumberInput, validationFields: ['phoneNumber'] }, 
+  { id: 'summary', component: OrderSummary, validationFields: [] }, 
 ];
 
 
@@ -67,13 +65,13 @@ const BookingForm: FC = () => {
 
   const methods = useForm<BookingFormData>({
     resolver: zodResolver(bookingSchema),
-    mode: "onChange", // Validate on change
+    mode: "onChange", 
     defaultValues: {
       passengers: 1,
       bags: 1,
       pickupLocation: { address: '', coordinates: undefined },
       dropoffLocation: { address: '', coordinates: undefined },
-      firstName: '', // Changed from fullName
+      firstName: '', 
       phoneNumber: '',
       carType: '',
       carModel: '',
@@ -92,7 +90,7 @@ const BookingForm: FC = () => {
        }
     } else {
        console.log("Step validation failed", errors);
-        // Find the first error message for the current step
+        
         const firstErrorField = fieldsToValidate.find(field => {
             const parts = field.split('.');
             let errorObj: any = errors;
@@ -111,10 +109,10 @@ const BookingForm: FC = () => {
                  if (!errorObj) break;
                  errorObj = errorObj[part];
              }
-             // Handle nested error messages correctly
+             
              if (errorObj && errorObj.message) {
                  errorMessage = typeof errorObj.message === 'string' ? errorObj.message : "الرجاء التحقق من الحقول المحددة.";
-             } else if (errorObj?.address?.message) { // Check for nested address errors
+             } else if (errorObj?.address?.message) { 
                  errorMessage = typeof errorObj.address.message === 'string' ? errorObj.address.message : "الرجاء التحقق من حقول الموقع.";
              }
         }
@@ -133,7 +131,7 @@ const BookingForm: FC = () => {
     }
   };
 
-   // Function to generate Google Maps link from coordinates
+   
    const getGoogleMapsLink = (coords?: { latitude?: number; longitude?: number }): string | null => {
      if (coords?.latitude && coords?.longitude) {
        return `https://www.google.com/maps?q=${coords.latitude},${coords.longitude}`;
@@ -141,7 +139,7 @@ const BookingForm: FC = () => {
      return null;
    };
 
-   // Function to generate Google Maps link from address string (less precise)
+   
     const getGoogleMapsLinkFromAddress = (address?: string): string | null => {
         if (address) {
         return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
@@ -151,7 +149,7 @@ const BookingForm: FC = () => {
 
 
   const onSubmit: SubmitHandler<BookingFormData> = async (data) => {
-     // Final validation before submitting
+     
      const isValidForm = await trigger();
      if (!isValidForm) {
          console.log("Final validation failed", errors);
@@ -160,7 +158,7 @@ const BookingForm: FC = () => {
              description: "الرجاء مراجعة النموذج بحثًا عن الأخطاء قبل الإرسال.",
              variant: "destructive",
          });
-         // Navigate back to the first step with an error
+         
           const firstErrorStep = steps.findIndex(step => step.validationFields.some(field => {
                 const parts = field.split('.');
                 let errorObj: any = errors;
@@ -178,11 +176,11 @@ const BookingForm: FC = () => {
 
      console.log("Booking Submitted:", data);
      try {
-       // Generate links preferentially from coordinates, fall back to address search if coords missing
+       
        const pickupMapLink = getGoogleMapsLink(data.pickupLocation.coordinates) || getGoogleMapsLinkFromAddress(data.pickupLocation.address);
        const dropoffMapLink = getGoogleMapsLink(data.dropoffLocation.coordinates) || getGoogleMapsLinkFromAddress(data.dropoffLocation.address);
 
-       // Format the message for WhatsApp in Arabic
+       
        const message = `
 *طلب حجز جديد من Wesso.App:*
 -----------------------------
@@ -199,10 +197,10 @@ const BookingForm: FC = () => {
 *رقم هاتف العميل:* ${data.phoneNumber}
 -----------------------------
 يرجى تأكيد هذه التفاصيل.
-       `.trim().replace(/\n\s+/g, '\n'); // Clean up extra whitespace
+       `.trim().replace(/\n\s+/g, '\n'); 
 
        const encodedMessage = encodeURIComponent(message);
-       const targetPhoneNumber = "201100434503"; // User's requested number
+       const targetPhoneNumber = "201100434503"; 
        const whatsappUrl = `https://wa.me/${targetPhoneNumber}?text=${encodedMessage}`;
 
        toast({
@@ -210,7 +208,7 @@ const BookingForm: FC = () => {
          description: "جاري إعادة توجيهك إلى واتساب لإرسال طلبك...",
        });
 
-       // Redirect the user to WhatsApp in a new tab/window
+       
        window.open(whatsappUrl, '_blank');
 
      } catch (error) {
@@ -225,7 +223,7 @@ const BookingForm: FC = () => {
 
   const CurrentComponent = steps[currentStep].component;
   const shouldAutoAdvance = steps[currentStep].autoAdvance && currentStep < steps.length - 1;
-  // Updated progress calculation based on the new number of steps
+  
   const progressPercentage = ((currentStep + 1) / steps.length) * 100;
 
   return (
@@ -239,14 +237,14 @@ const BookingForm: FC = () => {
          <Progress value={progressPercentage} className="w-full mb-6 h-2 bg-white/20 dark:bg-black/20 [&>div]:bg-primary" dir="ltr" />
 
           <motion.div
-            key={currentStep} // Ensures component remounts on step change for animation
+            key={currentStep} 
             initial={{ opacity: 0, x: currentStep > 0 ? -50 : 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 50 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
           >
              <CurrentComponent
-                errors={errors} // Pass errors down to step components
+                errors={errors} 
                 {...(shouldAutoAdvance && { onNext: handleNext })}
              />
           </motion.div>
