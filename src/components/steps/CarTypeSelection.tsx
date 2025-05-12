@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { FC } from 'react';
@@ -14,13 +15,14 @@ interface CarTypeOption {
   value: string; // Keep value in English for consistency
   label: string; // Label in Arabic
   imageUrl: string;
+  dataAiHint?: string;
 }
 
 const carTypes: CarTypeOption[] = [
-  { value: 'limousine', label: 'ليموزين', imageUrl: 'https://picsum.photos/seed/limo/300/200' },
-  { value: 'sedan', label: 'سيدان (ملاكي)', imageUrl: 'https://picsum.photos/seed/sedan/300/200' },
-  { value: 'large', label: 'سيارة كبيرة', imageUrl: 'https://picsum.photos/seed/large/300/200' },
-  { value: '7seater', label: '7 مقاعد', imageUrl: 'https://picsum.photos/seed/7seater/300/200' },
+  { value: 'limousine', label: 'ليموزين', imageUrl: 'https://picsum.photos/seed/limo/300/200', dataAiHint: 'luxury limousine' },
+  { value: 'sedan', label: 'سيدان (ملاكي)', imageUrl: 'https://picsum.photos/seed/sedan/300/200', dataAiHint: 'sedan car' },
+  { value: 'large', label: 'سيارة كبيرة', imageUrl: 'https://picsum.photos/seed/large/300/200', dataAiHint: 'suv car' },
+  { value: '7seater', label: '7 مقاعد', imageUrl: 'https://picsum.photos/seed/7seater/300/200', dataAiHint: 'van car' },
 ];
 
 interface CarTypeSelectionProps {
@@ -47,7 +49,7 @@ export const CarTypeSelection: FC<CarTypeSelectionProps> = ({ errors, onNext }) 
     <div className="space-y-6">
       <Label className="text-xl font-semibold text-foreground block mb-4">اختر نوع السيارة</Label>
        <p className="text-sm text-muted-foreground mb-6">اختر نوع السيارة الذي يناسب احتياجاتك.</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 sm:gap-4"> {/* Adjusted grid for potentially smaller cards */}
         {carTypes.map((car) => (
           <motion.div
              key={car.value}
@@ -74,18 +76,19 @@ export const CarTypeSelection: FC<CarTypeSelectionProps> = ({ errors, onNext }) 
                  className="sr-only"
                  aria-labelledby={`carType-label-${car.value}`}
                />
-              <CardHeader className="p-0 relative h-40">
+              <CardHeader className="p-0 relative h-32"> {/* Reduced height from h-40 */}
                 <Image
                   src={car.imageUrl}
                   alt={car.label} // Use Arabic label for alt text
                   layout="fill"
                   objectFit="cover"
                   className="rounded-t-lg"
+                  data-ai-hint={car.dataAiHint}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent rounded-t-lg"></div>
               </CardHeader>
-              <CardContent className="p-4">
-                <CardTitle id={`carType-label-${car.value}`} className="text-lg font-medium text-center text-foreground">{car.label}</CardTitle>
+              <CardContent className="p-3"> {/* Reduced padding from p-4 */}
+                <CardTitle id={`carType-label-${car.value}`} className="text-base font-medium text-center text-foreground">{car.label}</CardTitle> {/* Reduced font size from text-lg */}
               </CardContent>
             </Card>
           </motion.div>

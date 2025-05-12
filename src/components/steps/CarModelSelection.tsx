@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { FC } from 'react';
@@ -15,24 +16,25 @@ interface CarModelOption {
   label: string; // Label in Arabic
   imageUrl: string;
   type: string; // Keep type value in English for consistency with CarTypeSelection
+  dataAiHint?: string;
 }
 
 // Example car models with Arabic labels
 const allCarModels: CarModelOption[] = [
   // Sedans
-  { value: 'toyota-camry', label: 'تويوتا كامري', imageUrl: 'https://picsum.photos/seed/camry/300/200', type: 'sedan' },
-  { value: 'honda-accord', label: 'هوندا أكورد', imageUrl: 'https://picsum.photos/seed/accord/300/200', type: 'sedan' },
-  { value: 'mercedes-e-class', label: 'مرسيدس E-Class', imageUrl: 'https://picsum.photos/seed/eclass/300/200', type: 'sedan' },
+  { value: 'toyota-camry', label: 'تويوتا كامري', imageUrl: 'https://picsum.photos/seed/camry/300/200', type: 'sedan', dataAiHint: 'toyota camry' },
+  { value: 'honda-accord', label: 'هوندا أكورد', imageUrl: 'https://picsum.photos/seed/accord/300/200', type: 'sedan', dataAiHint: 'honda accord' },
+  { value: 'mercedes-e-class', label: 'مرسيدس E-Class', imageUrl: 'https://picsum.photos/seed/eclass/300/200', type: 'sedan', dataAiHint: 'mercedes eclass' },
   // Limousines
-  { value: 'lincoln-stretch', label: 'لينكولن ستريتش', imageUrl: 'https://picsum.photos/seed/lincoln/300/200', type: 'limousine' },
-  { value: 'cadillac-escalade-limo', label: 'كاديلاك إسكاليد ليمو', imageUrl: 'https://picsum.photos/seed/escalade-limo/300/200', type: 'limousine' },
+  { value: 'lincoln-stretch', label: 'لينكولن ستريتش', imageUrl: 'https://picsum.photos/seed/lincoln/300/200', type: 'limousine', dataAiHint: 'stretch limousine' },
+  { value: 'cadillac-escalade-limo', label: 'كاديلاك إسكاليد ليمو', imageUrl: 'https://picsum.photos/seed/escalade-limo/300/200', type: 'limousine', dataAiHint: 'cadillac escalade' },
   // Large Cars
-  { value: 'chevrolet-suburban', label: 'شيفروليه سوبربان', imageUrl: 'https://picsum.photos/seed/suburban/300/200', type: 'large' },
-  { value: 'ford-expedition', label: 'فورد إكسبيديشن', imageUrl: 'https://picsum.photos/seed/expedition/300/200', type: 'large' },
+  { value: 'chevrolet-suburban', label: 'شيفروليه سوبربان', imageUrl: 'https://picsum.photos/seed/suburban/300/200', type: 'large', dataAiHint: 'chevrolet suburban' },
+  { value: 'ford-expedition', label: 'فورد إكسبيديشن', imageUrl: 'https://picsum.photos/seed/expedition/300/200', type: 'large', dataAiHint: 'ford expedition' },
   // 7-Seaters
-  { value: 'toyota-sienna', label: 'تويوتا سيينا', imageUrl: 'https://picsum.photos/seed/sienna/300/200', type: '7seater' },
-  { value: 'honda-odyssey', label: 'هوندا أوديسي', imageUrl: 'https://picsum.photos/seed/odyssey/300/200', type: '7seater' },
-  { value: 'chrysler-pacifica', label: 'كرايسلر باسيفيكا', imageUrl: 'https://picsum.photos/seed/pacifica/300/200', type: '7seater' },
+  { value: 'toyota-sienna', label: 'تويوتا سيينا', imageUrl: 'https://picsum.photos/seed/sienna/300/200', type: '7seater', dataAiHint: 'toyota sienna' },
+  { value: 'honda-odyssey', label: 'هوندا أوديسي', imageUrl: 'https://picsum.photos/seed/odyssey/300/200', type: '7seater', dataAiHint: 'honda odyssey' },
+  { value: 'chrysler-pacifica', label: 'كرايسلر باسيفيكا', imageUrl: 'https://picsum.photos/seed/pacifica/300/200', type: '7seater', dataAiHint: 'chrysler pacifica' },
 ];
 
 // Helper to get Arabic type name
@@ -114,7 +116,7 @@ export const CarModelSelection: FC<CarModelSelectionProps> = ({ errors, onNext }
     <div className="space-y-6">
       <Label className="text-xl font-semibold text-foreground block mb-4">اختر موديل السيارة</Label>
       <p className="text-sm text-muted-foreground mb-6">اختر موديلًا محددًا من نوع السيارة الذي اخترته.</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"> {/* Adjusted grid and gap */}
         {availableModels.map((model) => (
           <motion.div
              key={model.value}
@@ -146,13 +148,14 @@ export const CarModelSelection: FC<CarModelSelectionProps> = ({ errors, onNext }
                  className="sr-only"
                  aria-labelledby={`carModel-label-${model.value}`}
                />
-              <CardHeader className="p-0 relative h-32 sm:h-40">
+              <CardHeader className="p-0 relative h-28 sm:h-32"> {/* Reduced height */}
                 <Image
                   src={model.imageUrl}
                   alt={model.label} // Use Arabic label for alt text
                   layout="fill"
                   objectFit="cover"
                   className="rounded-t-lg"
+                  data-ai-hint={model.dataAiHint}
                   // Add quality prop for optimization
                   quality={75}
                   priority={false} // Only prioritize above-the-fold images if needed
@@ -160,8 +163,8 @@ export const CarModelSelection: FC<CarModelSelectionProps> = ({ errors, onNext }
                 {/* Gradient overlay for better text visibility */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent rounded-t-lg"></div>
               </CardHeader>
-              <CardContent className="p-3 sm:p-4">
-                <CardTitle id={`carModel-label-${model.value}`} className="text-base sm:text-lg font-medium text-center text-foreground truncate">{model.label}</CardTitle>
+              <CardContent className="p-2 sm:p-3"> {/* Reduced padding */}
+                <CardTitle id={`carModel-label-${model.value}`} className="text-sm sm:text-base font-medium text-center text-foreground truncate">{model.label}</CardTitle> {/* Reduced font size */}
               </CardContent>
             </Card>
           </motion.div>
