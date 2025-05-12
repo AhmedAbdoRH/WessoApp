@@ -14,7 +14,7 @@ import { Toaster } from '@/components/ui/toaster'; // Import Toaster globally
 
 export const metadata: Metadata = {
   // Update metadata for Arabic
-  title: 'تطبيق حجز كلير رايد',
+  title: 'Wesso.app',
   description: 'تم إنشاؤه بواسطة Firebase Studio',
 };
 
