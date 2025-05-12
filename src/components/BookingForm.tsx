@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, FormProvider, type SubmitHandler } from "react-hook-form";
 import * as z from "zod";
 import { motion } from "framer-motion";
+import { ArrowLeft } from 'lucide-react'; // Import ArrowLeft icon
 
 import { CarTypeSelection } from "./steps/CarTypeSelection";
 import { CarModelSelection } from "./steps/CarModelSelection";
@@ -183,7 +184,7 @@ const BookingForm: FC = () => {
 
        // Format the message for WhatsApp in Arabic
        const message = `
-*طلب حجز جديد من كلير رايد:*
+*طلب حجز جديد من Wesso.App:*
 -----------------------------
 *نوع السيارة:* ${data.carType}
 *موديل السيارة:* ${data.carModel}
@@ -235,12 +236,10 @@ const BookingForm: FC = () => {
         aria-live="polite"
         noValidate
       >
-        {/* Adjust progress bar direction for RTL */}
-         <Progress value={progressPercentage} className="w-full mb-6 h-2 bg-white/20 dark:bg-black/20 [&>div]:bg-primary" dir="rtl" />
+         <Progress value={progressPercentage} className="w-full mb-6 h-2 bg-white/20 dark:bg-black/20 [&>div]:bg-primary" dir="ltr" />
 
           <motion.div
             key={currentStep} // Ensures component remounts on step change for animation
-            // Adjust animation direction for RTL if needed (x: positive for previous, negative for next)
             initial={{ opacity: 0, x: currentStep > 0 ? -50 : 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 50 }}
@@ -253,23 +252,19 @@ const BookingForm: FC = () => {
           </motion.div>
 
 
-        {/* Button layout: Previous on left, Next/Submit centered */}
         <div className="flex justify-between items-center mt-8 pt-4 border-t border-white/20 dark:border-black/20 relative">
-           {/* Previous Button on the Left */}
            <Button
              type="button"
              onClick={handlePrevious}
              disabled={currentStep === 0}
-             className="glass-button disabled:opacity-50 disabled:cursor-not-allowed absolute left-0" // Position left
+             className="glass-button disabled:opacity-50 disabled:cursor-not-allowed absolute left-0"
              aria-label="الخطوة السابقة"
            >
-             السابق
+             <ArrowLeft className="h-5 w-5" />
            </Button>
 
-           {/* Spacer to push Next/Submit to center */}
            <div className="flex-grow"></div>
 
-           {/* Next/Submit Button Centered */}
            <div className="flex justify-center flex-grow">
              {currentStep === steps.length - 1 ? (
                <Button
@@ -284,7 +279,7 @@ const BookingForm: FC = () => {
                !shouldAutoAdvance && (
                   <Button
                     type="button"
-                    onClick={handleNext} // Standard next button triggers validation via handleNext
+                    onClick={handleNext}
                     className="glass-button bg-accent/80 hover:bg-accent text-accent-foreground"
                     aria-label="الخطوة التالية"
                   >
@@ -294,16 +289,9 @@ const BookingForm: FC = () => {
              )}
            </div>
 
-            {/* Spacer to balance the layout */}
            <div className="flex-grow"></div>
 
         </div>
-         {/* Debug: Display current form errors */}
-         {/* {Object.keys(errors).length > 0 && (
-            <pre className="text-xs text-destructive mt-4 p-2 bg-destructive/10 rounded ltr">
-                Errors: {JSON.stringify(errors, null, 2)}
-            </pre>
-         )} */}
       </form>
     </FormProvider>
   );

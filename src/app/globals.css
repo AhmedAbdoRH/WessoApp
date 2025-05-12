@@ -15,19 +15,19 @@ body {
     --card-foreground: 30 10% 95%; /* Lighter card text */
     --popover: 20 14.3% 4.1%; /* Dark translucent popover */
     --popover-foreground: 30 10% 95%;
-    --primary: 174 40% 60%; /* Teal */
+    --primary: 15 80% 55%; /* Orange-Red */
     --primary-foreground: 0 0% 100%; /* White */
     --secondary: 12 6.5% 15.1%; /* Darker secondary */
     --secondary-foreground: 30 10% 95%;
     --muted: 12 6.5% 15.1%;
     --muted-foreground: 30 5.4% 70%; /* Adjusted muted foreground */
-    --accent: 174 40% 70%; /* Lighter Teal for accent */
+    --accent: 174 40% 70%; /* Lighter Teal for accent - kept as is, user might want to change this */
     --accent-foreground: 10 10% 10%; /* Darker accent text */
     --destructive: 0 62.8% 30.6%; /* Dark red */
     --destructive-foreground: 0 0% 98%; /* Light text on destructive */
     --border: 30 6.5% 25.1%; /* Slightly lighter border for contrast */
     --input: 30 6.5% 20.1%; /* Slightly lighter input bg */
-    --ring: 174 40% 60%; /* Teal for focus rings */
+    --ring: 15 80% 55%; /* Orange-Red for focus rings */
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
@@ -38,12 +38,12 @@ body {
     /* Keep sidebar distinct if needed, or align with main dark theme */
     --sidebar-background: 24 9.8% 10%; /* Match card background */
     --sidebar-foreground: 30 10% 95%; /* Match card foreground */
-    --sidebar-primary: 174 40% 60%; /* Teal */
+    --sidebar-primary: 15 80% 55%; /* Orange-Red */
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 12 6.5% 15.1%; /* Match secondary */
     --sidebar-accent-foreground: 30 10% 95%;
     --sidebar-border: 30 6.5% 25.1%; /* Match border */
-    --sidebar-ring: 174 40% 60%; /* Teal */
+    --sidebar-ring: 15 80% 55%; /* Orange-Red */
   }
 
   /* Force dark theme for now based on user request */
