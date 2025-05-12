@@ -262,7 +262,7 @@ const BookingForm: FC = () => {
              <ArrowLeft className="h-5 w-5" />
            </Button>
 
-           <div className="flex-grow"></div>
+           <div className="flex-grow"></div> {/* Spacer */}
 
            <div className="flex justify-center flex-grow">
              {currentStep === steps.length - 1 ? (
@@ -279,7 +279,7 @@ const BookingForm: FC = () => {
                   <Button
                     type="button"
                     onClick={handleNext}
-                    className="glass-button bg-accent/80 hover:bg-accent text-accent-foreground"
+                    className="glass-button bg-accent/80 hover:bg-accent text-primary-foreground" // Changed text-accent-foreground to text-primary-foreground
                     aria-label={isPhoneNumberStep ? "التأكيد والانتهاء والانتقال إلى ملخص الطلب" : "الخطوة التالية"}
                   >
                     {isPhoneNumberStep ? "التأكيد والانتهاء" : "التالي"}
@@ -288,8 +288,7 @@ const BookingForm: FC = () => {
              )}
            </div>
 
-           <div className="flex-grow"></div>
-
+           <div className="flex-grow"></div> {/* Spacer */}
         </div>
       </form>
     </FormProvider>
@@ -297,3 +296,4 @@ const BookingForm: FC = () => {
 };
 
 export default BookingForm;
+
