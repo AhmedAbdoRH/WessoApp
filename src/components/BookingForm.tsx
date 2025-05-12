@@ -47,11 +47,11 @@ export type BookingFormData = z.infer<typeof bookingSchema>;
 type StepFieldName = Exclude<keyof BookingFormData, 'fullName'> | 'firstName' | `${keyof Pick<BookingFormData, 'pickupLocation' | 'dropoffLocation'>}.${keyof BookingFormData['pickupLocation']}`;
 
 
-
-const steps: { id: string; component: FC<any>; validationFields: StepFieldName[]; autoAdvance?: boolean }[] = [
+const steps: { id: string; component: FC<any>; validationFields: StepFieldName[]; autoAdvance?: boolean; props?: Record<string, any> }[] = [
   { id: 'carType', component: CarTypeSelection, validationFields: ['carType'], autoAdvance: true },
   { id: 'carModel', component: CarModelSelection, validationFields: ['carModel'], autoAdvance: true },
-  { id: 'passengers', component: PassengerSelection, validationFields: ['passengers', 'bags'] },
+  { id: 'passengers', component: PassengerSelection, validationFields: ['passengers'], autoAdvance: true, props: { selectionType: 'passengers' } },
+  { id: 'bags', component: PassengerSelection, validationFields: ['bags'], autoAdvance: true, props: { selectionType: 'bags' } },
   { id: 'location', component: LocationSelection, validationFields: ['pickupLocation.address', 'pickupLocation.coordinates', 'dropoffLocation.address', 'dropoffLocation.coordinates'] },
   { id: 'firstName', component: FirstNameInput, validationFields: ['firstName'] }, 
   { id: 'phoneNumber', component: PhoneNumberInput, validationFields: ['phoneNumber'] }, 
@@ -247,6 +247,7 @@ const BookingForm: FC = () => {
              <CurrentComponent
                 errors={errors} 
                 {...(shouldAutoAdvance && { onNext: handleNext })}
+                {...steps[currentStep].props}
              />
           </motion.div>
 
@@ -279,7 +280,7 @@ const BookingForm: FC = () => {
                   <Button
                     type="button"
                     onClick={handleNext}
-                    className="glass-button bg-accent/80 hover:bg-accent text-primary-foreground" // Changed text-accent-foreground to text-primary-foreground
+                    className="glass-button bg-accent/80 hover:bg-accent text-primary-foreground" 
                     aria-label={isPhoneNumberStep ? "التأكيد والانتهاء والانتقال إلى ملخص الطلب" : "الخطوة التالية"}
                   >
                     {isPhoneNumberStep ? "التأكيد والانتهاء" : "التالي"}
