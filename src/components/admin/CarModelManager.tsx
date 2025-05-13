@@ -28,12 +28,10 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const carModelFormSchema = z.object({
-  value: z.string().min(1, 'معرف الموديل مطلوب').max(50, 'المعرف طويل جداً').regex(/^[a-z0-9-]+$/, 'المعرف يجب أن يحتوي على أحرف صغيرة وأرقام وشرطات فقط.'),
   label: z.string().min(1, 'اسم الموديل (بالعربية) مطلوب').max(100, 'الاسم طويل جداً'),
   imageUrlInput: z.instanceof(FileList).optional(),
   existingImageUrl: z.string().url().optional().or(z.literal('')),
   type: z.string().min(1, 'يجب اختيار نوع السيارة'),
-  dataAiHint: z.string().optional(),
   order: z.coerce.number().min(0, 'الترتيب يجب أن يكون 0 أو أكبر'),
 }).refine(data => {
   const hasNewFile = data.imageUrlInput instanceof FileList && data.imageUrlInput.length > 0;
@@ -65,11 +63,9 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
   const { register, handleSubmit, reset, setValue, control, watch, formState: { errors, isDirty } } = useForm<CarModelFormData>({
     resolver: zodResolver(carModelFormSchema),
     defaultValues: {
-      value: '',
       label: '',
       existingImageUrl: '',
       type: '',
-      dataAiHint: '',
       order: 0,
     },
   });
@@ -77,7 +73,6 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
   const watchedImageUrlInput = watch('imageUrlInput');
   const watchedExistingImageUrl = watch('existingImageUrl');
   
-  // Destructure ref from register to merge with local fileInputRef
   const { ref: imageInputRegisterRef, ...imageInputProps } = register('imageUrlInput');
 
   useEffect(() => {
@@ -95,12 +90,10 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
 
   const handleEdit = (carModel: CarModelOptionAdmin) => {
     setEditingCarModel(carModel);
-    setValue('value', carModel.value);
     setValue('label', carModel.label);
     setValue('existingImageUrl', carModel.imageUrl || '');
     setValue('imageUrlInput', undefined);
     setValue('type', carModel.type);
-    setValue('dataAiHint', carModel.dataAiHint || '');
     setValue('order', carModel.order);
     setShowForm(true);
     setImagePreviewUrl(carModel.imageUrl || null);
@@ -118,12 +111,10 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
   const resetFormAndState = () => {
     const defaultOrder = carModels.length > 0 ? Math.max(...carModels.map(cm => cm.order)) + 1 : 0;
     reset({
-      value: '',
       label: '',
       imageUrlInput: undefined,
       existingImageUrl: '',
       type: allCarTypes[0]?.value || '',
-      dataAiHint: '',
       order: defaultOrder,
     });
     setEditingCarModel(null);
@@ -144,13 +135,13 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
             toast({ title: 'خطأ في الصورة', description: 'يجب توفير صورة للمتابعة.', variant: 'destructive' });
             return;
           }
-          await updateCarModelAdmin(editingCarModel.id!, {
+          await updateCarModelAdmin(editingCarModel.id!, { // Use editingCarModel.id
             label: data.label,
             imageUrlInput: imageFile,
             currentImageUrl: editingCarModel.imageUrl,
             type: data.type,
-            dataAiHint: data.dataAiHint,
             order: data.order,
+            // dataAiHint removed
           });
           toast({ title: 'تم التحديث', description: `تم تحديث موديل السيارة: ${data.label}` });
         } else {
@@ -159,12 +150,12 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
             return;
           }
           await addCarModelAdmin({
-            value: data.value,
             label: data.label,
             imageUrlInput: imageFile,
             type: data.type,
-            dataAiHint: data.dataAiHint,
             order: data.order,
+            // dataAiHint removed
+            // value (ID) handled by service
           });
           toast({ title: 'تمت الإضافة', description: `تمت إضافة موديل السيارة: ${data.label}` });
         }
@@ -203,12 +194,10 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
     if (!editingCarModel && !showForm) {
         const defaultOrder = initialCarModels.length > 0 ? Math.max(...initialCarModels.map(cm => cm.order)) + 1 : 0;
         reset({ 
-            value: '',
             label: '',
             imageUrlInput: undefined,
             existingImageUrl: '',
             type: allCarTypes[0]?.value || '', 
-            dataAiHint: '',
             order: defaultOrder 
         });
     }
@@ -222,12 +211,10 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
           setEditingCarModel(null); 
           const defaultOrder = carModels.length > 0 ? Math.max(...carModels.map(cm => cm.order)) + 1 : 0;
           reset({ 
-            value: '',
             label: '',
             imageUrlInput: undefined,
             existingImageUrl: '',
             type: allCarTypes[0]?.value || '',
-            dataAiHint: '',
             order: defaultOrder 
             });
           setImagePreviewUrl(null);
@@ -243,12 +230,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
       {showForm && allCarTypes.length > 0 && (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 admin-form p-4 glass-card mb-6">
           <h3 className="text-lg font-medium">{editingCarModel ? 'تعديل موديل السيارة' : 'إضافة موديل سيارة جديد'}</h3>
-          <div>
-            <Label htmlFor="cm-value">المعرّف (ID - إنجليزي، مثال: toyota-camry)</Label>
-            <Input id="cm-value" {...register('value')} disabled={!!editingCarModel} />
-            {errors.value && <p className="text-sm text-destructive mt-1">{errors.value.message}</p>}
-            {!!editingCarModel && <p className="text-xs text-muted-foreground mt-1">لا يمكن تغيير المعرّف بعد الإنشاء.</p>}
-          </div>
+          {/* ID Field Removed */}
           <div>
             <Label htmlFor="cm-label">الاسم (بالعربية)</Label>
             <Input id="cm-label" {...register('label')} />
@@ -272,10 +254,10 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
                     id="cm-imageUrlInput" 
                     type="file" 
                     accept="image/*" 
-                    {...imageInputProps} // Spread props from register
-                    ref={(e) => { // Merge refs
-                        imageInputRegisterRef(e); // Pass to RHF's ref
-                        fileInputRef.current = e; // Assign to local ref
+                    {...imageInputProps} 
+                    ref={(e) => { 
+                        imageInputRegisterRef(e); 
+                        fileInputRef.current = e; 
                     }}
                     className="flex-grow"
                 />
@@ -312,10 +294,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
             />
             {errors.type && <p className="text-sm text-destructive mt-1">{errors.type.message}</p>}
           </div>
-          <div>
-            <Label htmlFor="cm-dataAiHint">وصف للصورة (لـ AI - اختياري)</Label>
-            <Input id="cm-dataAiHint" {...register('dataAiHint')} />
-          </div>
+          {/* dataAiHint Field Removed */}
           <div>
             <Label htmlFor="cm-order">ترتيب العرض</Label>
             <Input id="cm-order" type="number" {...register('order')} />

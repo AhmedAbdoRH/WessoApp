@@ -28,11 +28,9 @@ import {
 
 // Schema for form data handling FileList or existing string URL
 const carTypeFormSchema = z.object({
-  value: z.string().min(1, 'معرف النوع مطلوب').max(50, 'المعرف طويل جداً').regex(/^[a-z0-9-]+$/, 'المعرف يجب أن يحتوي على أحرف صغيرة وأرقام وشرطات فقط.'),
   label: z.string().min(1, 'اسم النوع (بالعربية) مطلوب').max(100, 'الاسم طويل جداً'),
   imageUrlInput: z.instanceof(FileList).optional(), // For new file uploads
   existingImageUrl: z.string().url().optional().or(z.literal('')), // For displaying/keeping existing image
-  dataAiHint: z.string().optional(),
   order: z.coerce.number().min(0, 'الترتيب يجب أن يكون 0 أو أكبر'),
 }).refine(data => {
   const hasNewFile = data.imageUrlInput instanceof FileList && data.imageUrlInput.length > 0;
@@ -64,10 +62,8 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
   const { register, handleSubmit, reset, setValue, watch, formState: { errors, isDirty } } = useForm<CarTypeFormData>({
     resolver: zodResolver(carTypeFormSchema),
     defaultValues: {
-      value: '',
       label: '',
       existingImageUrl: '',
-      dataAiHint: '',
       order: 0,
     },
   });
@@ -95,11 +91,9 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
 
   const handleEdit = (carType: CarTypeOptionAdmin) => {
     setEditingCarType(carType);
-    setValue('value', carType.value);
     setValue('label', carType.label);
     setValue('existingImageUrl', carType.imageUrl || '');
     setValue('imageUrlInput', undefined); // Clear file input
-    setValue('dataAiHint', carType.dataAiHint || '');
     setValue('order', carType.order);
     setShowForm(true);
     setImagePreviewUrl(carType.imageUrl || null);
@@ -117,11 +111,9 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
   const resetFormAndState = () => {
     const defaultOrder = carTypes.length > 0 ? Math.max(...carTypes.map(ct => ct.order)) + 1 : 0;
     reset({
-      value: '',
       label: '',
       imageUrlInput: undefined,
       existingImageUrl: '',
-      dataAiHint: '',
       order: defaultOrder,
     });
     setEditingCarType(null);
@@ -143,12 +135,12 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
              toast({ title: 'خطأ في الصورة', description: 'يجب توفير صورة للمتابعة.', variant: 'destructive' });
              return;
           }
-          await updateCarTypeAdmin(editingCarType.id!, {
+          await updateCarTypeAdmin(editingCarType.id!, { // Use editingCarType.id (which is the Firestore doc ID)
             label: data.label,
             imageUrlInput: imageFile,
-            currentImageUrl: editingCarType.imageUrl, // Pass current to potentially delete old one
-            dataAiHint: data.dataAiHint,
+            currentImageUrl: editingCarType.imageUrl, 
             order: data.order,
+            // dataAiHint is removed
           });
           toast({ title: 'تم التحديث', description: `تم تحديث نوع السيارة: ${data.label}` });
         } else {
@@ -157,11 +149,11 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
             return;
           }
           await addCarTypeAdmin({
-            value: data.value,
             label: data.label,
             imageUrlInput: imageFile,
-            dataAiHint: data.dataAiHint,
             order: data.order,
+            // dataAiHint is removed
+            // value (ID) is handled by the service
           });
           toast({ title: 'تمت الإضافة', description: `تمت إضافة نوع السيارة: ${data.label}` });
         }
@@ -200,11 +192,9 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
      if (!editingCarType && !showForm) { 
         const defaultOrder = initialCarTypes.length > 0 ? Math.max(...initialCarTypes.map(ct => ct.order)) + 1 : 0;
         reset({ 
-            value: '', 
             label: '', 
             imageUrlInput: undefined,
             existingImageUrl: '',
-            dataAiHint: '', 
             order: defaultOrder 
         });
     }
@@ -218,11 +208,9 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
           setEditingCarType(null); 
           const defaultOrder = carTypes.length > 0 ? Math.max(...carTypes.map(ct => ct.order)) + 1 : 0;
           reset({ 
-              value: '', 
               label: '', 
               imageUrlInput: undefined,
               existingImageUrl: '', 
-              dataAiHint: '', 
               order: defaultOrder 
           });
           setImagePreviewUrl(null);
@@ -233,12 +221,7 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
       {showForm && (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 admin-form p-4 glass-card mb-6">
           <h3 className="text-lg font-medium">{editingCarType ? 'تعديل نوع السيارة' : 'إضافة نوع سيارة جديد'}</h3>
-          <div>
-            <Label htmlFor="ct-value">المعرّف (ID - إنجليزي، مثال: sedan)</Label>
-            <Input id="ct-value" {...register('value')} disabled={!!editingCarType} />
-            {errors.value && <p className="text-sm text-destructive mt-1">{errors.value.message}</p>}
-             {!!editingCarType && <p className="text-xs text-muted-foreground mt-1">لا يمكن تغيير المعرّف بعد الإنشاء.</p>}
-          </div>
+          {/* ID Field Removed */}
           <div>
             <Label htmlFor="ct-label">الاسم (بالعربية)</Label>
             <Input id="ct-label" {...register('label')} />
@@ -262,10 +245,10 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
                     id="ct-imageUrlInput" 
                     type="file" 
                     accept="image/*" 
-                    {...imageInputProps} // Spread props from register
-                    ref={(e) => { // Merge refs
-                        imageInputRegisterRef(e); // Pass to RHF's ref
-                        fileInputRef.current = e; // Assign to local ref
+                    {...imageInputProps} 
+                    ref={(e) => { 
+                        imageInputRegisterRef(e); 
+                        fileInputRef.current = e; 
                     }}
                     className="flex-grow"
                 />
@@ -275,7 +258,6 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
                     </Button>
                 )}
             </div>
-            {/* Hidden input to carry existingImageUrl string for validation logic if needed */}
             <input type="hidden" {...register('existingImageUrl')} />
             {errors.imageUrlInput && <p className="text-sm text-destructive mt-1">{errors.imageUrlInput.message}</p>}
              {editingCarType && !imagePreviewUrl && !watchedImageUrlInput?.length && (
@@ -283,10 +265,7 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
             )}
           </div>
 
-          <div>
-            <Label htmlFor="ct-dataAiHint">وصف للصورة (لـ AI - اختياري)</Label>
-            <Input id="ct-dataAiHint" {...register('dataAiHint')} />
-          </div>
+          {/* dataAiHint Field Removed */}
           <div>
             <Label htmlFor="ct-order">ترتيب العرض</Label>
             <Input id="ct-order" type="number" {...register('order')} />

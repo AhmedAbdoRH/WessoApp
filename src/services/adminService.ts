@@ -13,7 +13,8 @@ import {
   orderBy,
   where,
   getDoc,
-  runTransaction
+  runTransaction,
+  addDoc as addFirestoreDoc // Use addDoc for auto-ID generation, then set specific doc for consistency
 } from 'firebase/firestore';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject, type FirebaseStorageError } from "firebase/storage";
 import type { CarTypeOptionAdmin, CarModelOptionAdmin, AppConfig } from '@/types/admin';
@@ -73,7 +74,6 @@ async function uploadImage(file: File, pathPrefix: string, entityId: string): Pr
   if (!file || !file.name || !(file instanceof File)) {
     throw new Error('ملف غير صالح مقدم للتحميل.');
   }
-  // Sanitize file name by replacing spaces with underscores and removing special characters for safety
   const safeFileName = file.name.replace(/\s+/g, '_').replace(/[^\w.-]/g, '');
   const fileName = `${entityId}-${Date.now()}-${safeFileName}`;
   const imagePath = `${pathPrefix}/${fileName}`;
@@ -84,13 +84,12 @@ async function uploadImage(file: File, pathPrefix: string, entityId: string): Pr
     const downloadURL = await getDownloadURL(snapshot.ref);
     return downloadURL;
   } catch (error) {
-    console.error("Firebase Storage upload failed:", error); // Log the full error for debugging
+    console.error("Firebase Storage upload failed:", error); 
     let userMessage = 'فشل تحميل الصورة. حدث خطأ غير معروف.';
-    if (error instanceof Error && 'code' in error) { // Check if it's a FirebaseError-like object
-        const firebaseError = error as FirebaseStorageError; // Type assertion
+    if (error instanceof Error && 'code' in error) { 
+        const firebaseError = error as FirebaseStorageError; 
         userMessage = `فشل تحميل الصورة (الكود: ${firebaseError.code}).`;
         
-        // Attempt to get server response if available, though it might not always be present
         if (firebaseError.serverResponse) {
             userMessage += ` استجابة الخادم: ${firebaseError.serverResponse}`;
         }
@@ -106,7 +105,6 @@ async function uploadImage(file: File, pathPrefix: string, entityId: string): Pr
                 userMessage = 'فشل تحميل الصورة: خطأ غير معروف من الخادم. يرجى التحقق من إعدادات CORS وقواعد Storage في Firebase Console. راجع وحدة التحكم للمطورين في المتصفح لمزيد من التفاصيل حول استجابة الشبكة.';
                 break;
             case 'storage/object-not-found':
-                // This specific check for CORS message might be part of serverResponse or a custom message
                 if (firebaseError.message?.toLowerCase().includes('cors')) {
                      userMessage = 'فشل تحميل الصورة. قد تكون هناك مشكلة في إعدادات CORS على Firebase Storage bucket. تأكد من أن نطاقك (origin) مسموح به.';
                 } else {
@@ -119,9 +117,7 @@ async function uploadImage(file: File, pathPrefix: string, entityId: string): Pr
              case 'storage/project-not-found':
                 userMessage = `فشل تحميل الصورة: لم يتم العثور على مشروع Firebase (الكود: ${firebaseError.code}). تحقق من إعدادات مشروع Firebase.`;
                 break;
-            // Add more specific cases as needed based on Firebase documentation
             default:
-                // Fallback to a more generic message including the original error message if it's informative
                 userMessage = `فشل تحميل الصورة (الكود: ${firebaseError.code}). التفاصيل: ${firebaseError.message || 'لا توجد تفاصيل إضافية.'}`;
         }
     }
@@ -129,7 +125,6 @@ async function uploadImage(file: File, pathPrefix: string, entityId: string): Pr
   }
 }
 
-// Helper function to delete an image from Firebase Storage
 async function deleteOldImageWithCaution(imageUrl: string | undefined) {
     if (!imageUrl || !imageUrl.startsWith('https://firebasestorage.googleapis.com')) {
         console.log("Skipping deletion of invalid or non-Firebase Storage URL:", imageUrl);
@@ -144,7 +139,6 @@ async function deleteOldImageWithCaution(imageUrl: string | undefined) {
             console.log("Old image not found in storage (may have been already deleted or path mismatch):", imageUrl);
         } else {
             console.error("Failed to delete old image from Storage:", imageUrl, error);
-            // Optionally, re-throw if deletion is critical, or log and continue
         }
     }
 }
@@ -158,10 +152,9 @@ export async function getCarTypesForBooking(): Promise<Omit<CarTypeOptionAdmin, 
     const data = docSnap.data();
     return {
       id: docSnap.id,
-      value: docSnap.id, // Using docSnap.id as value for consistency
+      value: docSnap.id, 
       label: data.label,
       imageUrl: data.imageUrl,
-      // dataAiHint and order are omitted as per return type
     } as Omit<CarTypeOptionAdmin, 'order' | 'dataAiHint'>;
   });
 }
@@ -169,46 +162,39 @@ export async function getCarTypesForBooking(): Promise<Omit<CarTypeOptionAdmin, 
 export async function getCarTypesAdmin(): Promise<CarTypeOptionAdmin[]> {
   const q = query(collection(db, CAR_TYPES_COLLECTION), orderBy('order'));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as CarTypeOptionAdmin));
+  return snapshot.docs.map(docSnap => ({ id: docSnap.id, value: docSnap.id, ...docSnap.data() } as CarTypeOptionAdmin));
 }
 
-export async function addCarTypeAdmin(carTypeData: Omit<CarTypeOptionAdmin, 'id' | 'imageUrl'> & { imageUrlInput: File | null }): Promise<string> {
-  if (!carTypeData.value || carTypeData.value.trim() === '') {
-    throw new Error('معرف نوع السيارة لا يمكن أن يكون فارغًا.');
-  }
-  const docRefCheck = doc(db, CAR_TYPES_COLLECTION, carTypeData.value);
-  const docSnapCheck = await getDoc(docRefCheck);
-  if (docSnapCheck.exists()) {
-    throw new Error(`نوع سيارة بالمعرف '${carTypeData.value}' موجود بالفعل.`);
-  }
-
+export async function addCarTypeAdmin(carTypeData: Omit<CarTypeOptionAdmin, 'id' | 'value' | 'imageUrl' | 'dataAiHint'> & { imageUrlInput: File | null }): Promise<string> {
   if (!(carTypeData.imageUrlInput instanceof File)) {
     throw new Error('ملف الصورة مطلوب لإضافة نوع سيارة جديد.');
   }
   
-  const finalImageUrl = await uploadImage(carTypeData.imageUrlInput, CAR_TYPES_COLLECTION, carTypeData.value);
+  // Create a new document reference with an auto-generated ID
+  const newDocRef = doc(collection(db, CAR_TYPES_COLLECTION));
+  const newId = newDocRef.id;
 
-  const dataToSave: Omit<CarTypeOptionAdmin, 'id'> = {
-    value: carTypeData.value,
+  const finalImageUrl = await uploadImage(carTypeData.imageUrlInput, CAR_TYPES_COLLECTION, newId);
+
+  const dataToSave: Omit<CarTypeOptionAdmin, 'id' | 'dataAiHint'> = { // dataAiHint removed from what's saved
+    value: newId, // Store the auto-generated ID in the 'value' field
     label: carTypeData.label,
     imageUrl: finalImageUrl,
-    dataAiHint: carTypeData.dataAiHint,
     order: carTypeData.order,
   };
 
-  const docRef = doc(db, CAR_TYPES_COLLECTION, carTypeData.value);
-  await setDoc(docRef, dataToSave);
-  return carTypeData.value;
+  await setDoc(newDocRef, dataToSave);
+  return newId;
 }
 
-export async function updateCarTypeAdmin(id: string, carTypeUpdate: Partial<Omit<CarTypeOptionAdmin, 'id' | 'value' | 'imageUrl'>> & { imageUrlInput?: File | null, currentImageUrl?: string }): Promise<void> {
+export async function updateCarTypeAdmin(id: string, carTypeUpdate: Partial<Omit<CarTypeOptionAdmin, 'id' | 'value' | 'imageUrl' | 'dataAiHint'>> & { imageUrlInput?: File | null, currentImageUrl?: string }): Promise<void> {
   const docRef = doc(db, CAR_TYPES_COLLECTION, id);
   
   const updatePayload: { [key: string]: any } = { ...carTypeUpdate };
-  delete updatePayload.imageUrlInput;
-  const oldImageUrl = updatePayload.currentImageUrl; // Save before deleting
+  delete updatePayload.imageUrlInput; // remove from payload as it's handled separately
+  const oldImageUrl = updatePayload.currentImageUrl; 
   delete updatePayload.currentImageUrl;
-
+  // dataAiHint is implicitly removed if not in carTypeUpdate, which it won't be from the form anymore
 
   if (carTypeUpdate.imageUrlInput instanceof File) {
     if (oldImageUrl) {
@@ -216,11 +202,9 @@ export async function updateCarTypeAdmin(id: string, carTypeUpdate: Partial<Omit
     }
     updatePayload.imageUrl = await uploadImage(carTypeUpdate.imageUrlInput, CAR_TYPES_COLLECTION, id);
   } else if (carTypeUpdate.imageUrlInput === null && oldImageUrl) {
-    // If imageUrlInput is explicitly null (meaning clear image) and there was an old image
     await deleteOldImageWithCaution(oldImageUrl);
-    updatePayload.imageUrl = ''; // Set to empty string or handle as per your app's logic for no image
+    updatePayload.imageUrl = ''; 
   }
-
 
   if (Object.keys(updatePayload).length > 0) {
     await updateDoc(docRef, updatePayload);
@@ -241,9 +225,8 @@ export async function deleteCarTypeAdmin(id: string): Promise<void> {
 
     transaction.delete(carTypeDocRef);
 
-    // Delete associated car models
     const modelsQuery = query(collection(db, CAR_MODELS_COLLECTION), where('type', '==', id));
-    const modelsSnapshot = await getDocs(modelsQuery); // Fetch outside transaction for read, then delete inside
+    const modelsSnapshot = await getDocs(modelsQuery); 
     
     for (const modelDoc of modelsSnapshot.docs) {
       const modelData = modelDoc.data() as CarModelOptionAdmin;
@@ -265,10 +248,9 @@ export async function getCarModelsForBooking(carTypeValue: string): Promise<Omit
     const data = docSnap.data();
     return {
       id: docSnap.id,
-      value: docSnap.id, // Using docSnap.id as value
+      value: docSnap.id, 
       label: data.label,
       imageUrl: data.imageUrl,
-       // dataAiHint, order, type are omitted
     } as Omit<CarModelOptionAdmin, 'order' | 'dataAiHint' | 'type'>;
   });
 }
@@ -276,46 +258,38 @@ export async function getCarModelsForBooking(carTypeValue: string): Promise<Omit
 export async function getCarModelsAdmin(): Promise<CarModelOptionAdmin[]> {
   const q = query(collection(db, CAR_MODELS_COLLECTION), orderBy('type'), orderBy('order'));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as CarModelOptionAdmin));
+  return snapshot.docs.map(docSnap => ({ id: docSnap.id, value: docSnap.id, ...docSnap.data() } as CarModelOptionAdmin));
 }
 
-export async function addCarModelAdmin(carModelData: Omit<CarModelOptionAdmin, 'id' | 'imageUrl'> & { imageUrlInput: File | null }): Promise<string> {
-  if (!carModelData.value || carModelData.value.trim() === '') {
-    throw new Error('معرف موديل السيارة لا يمكن أن يكون فارغًا.');
-  }
-  const docRefCheck = doc(db, CAR_MODELS_COLLECTION, carModelData.value);
-  const docSnapCheck = await getDoc(docRefCheck);
-  if (docSnapCheck.exists()) {
-    throw new Error(`موديل سيارة بالمعرف '${carModelData.value}' موجود بالفعل.`);
-  }
-
+export async function addCarModelAdmin(carModelData: Omit<CarModelOptionAdmin, 'id' | 'value' | 'imageUrl' | 'dataAiHint'> & { imageUrlInput: File | null }): Promise<string> {
   if (!(carModelData.imageUrlInput instanceof File)) {
     throw new Error('ملف الصورة مطلوب لإضافة موديل سيارة جديد.');
   }
 
-  const finalImageUrl = await uploadImage(carModelData.imageUrlInput, CAR_MODELS_COLLECTION, carModelData.value);
+  const newDocRef = doc(collection(db, CAR_MODELS_COLLECTION));
+  const newId = newDocRef.id;
+
+  const finalImageUrl = await uploadImage(carModelData.imageUrlInput, CAR_MODELS_COLLECTION, newId);
   
-  const dataToSave: Omit<CarModelOptionAdmin, 'id'> = {
-    value: carModelData.value,
+  const dataToSave: Omit<CarModelOptionAdmin, 'id' | 'dataAiHint'> = { // dataAiHint removed
+    value: newId, // Store auto-generated ID in 'value'
     label: carModelData.label,
     imageUrl: finalImageUrl,
     type: carModelData.type,
-    dataAiHint: carModelData.dataAiHint,
     order: carModelData.order,
   };
   
-  const docRef = doc(db, CAR_MODELS_COLLECTION, carModelData.value);
-  await setDoc(docRef, dataToSave);
-  return carModelData.value;
+  await setDoc(newDocRef, dataToSave);
+  return newId;
 }
 
-export async function updateCarModelAdmin(id: string, carModelUpdate: Partial<Omit<CarModelOptionAdmin, 'id' | 'value' | 'imageUrl'>> & { imageUrlInput?: File | null, currentImageUrl?: string }): Promise<void> {
+export async function updateCarModelAdmin(id: string, carModelUpdate: Partial<Omit<CarModelOptionAdmin, 'id' | 'value' | 'imageUrl' | 'dataAiHint'>> & { imageUrlInput?: File | null, currentImageUrl?: string }): Promise<void> {
   const docRef = doc(db, CAR_MODELS_COLLECTION, id);
   const updatePayload: { [key: string]: any } = { ...carModelUpdate };
   delete updatePayload.imageUrlInput;
   const oldImageUrl = updatePayload.currentImageUrl;
   delete updatePayload.currentImageUrl;
-
+  // dataAiHint is implicitly removed
 
   if (carModelUpdate.imageUrlInput instanceof File) {
      if (oldImageUrl) {
@@ -326,7 +300,6 @@ export async function updateCarModelAdmin(id: string, carModelUpdate: Partial<Om
     await deleteOldImageWithCaution(oldImageUrl);
     updatePayload.imageUrl = '';
   }
-
 
   if (Object.keys(updatePayload).length > 0) {
     await updateDoc(docRef, updatePayload);
@@ -352,23 +325,17 @@ export async function getAppConfig(): Promise<AppConfig | null> {
     if (docSnap.exists()) {
         return docSnap.data() as AppConfig;
     }
-    // Default config if nothing exists
     const defaultConfig: AppConfig = { appName: 'ClearRide', logoUrl: '' };
     try {
-        await setDoc(docRef, defaultConfig); // Create default config if it doesn't exist
+        await setDoc(docRef, defaultConfig); 
         return defaultConfig;
     } catch (error) {
         console.error("Failed to set default app config:", error);
-        return { appName: 'ClearRide', logoUrl: '' }; // Return a fallback default
+        return { appName: 'ClearRide', logoUrl: '' }; 
     }
 }
 
 export async function updateAppConfigAdmin(config: AppConfig): Promise<void> {
     const docRef = doc(db, APP_CONFIG_COLLECTION, APP_CONFIG_DOC_ID);
-    // Here, logoUrl is assumed to be a string URL. If file upload is needed for logo,
-    // similar logic to car types/models (with uploadImage) would be required.
-    // For simplicity, we'll assume logoUrl is managed as a URL string for now.
     await setDoc(docRef, config, { merge: true });
 }
-
-    
