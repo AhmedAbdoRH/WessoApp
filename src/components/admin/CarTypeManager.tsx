@@ -1,3 +1,4 @@
+
 // src/components/admin/CarTypeManager.tsx
 'use client';
 
@@ -67,6 +68,7 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
       existingImageUrl: '',
       existingPublicId: '',
       order: 0,
+      imageUrlInput: undefined,
     },
   });
 
@@ -99,10 +101,13 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
     setValue('order', carType.order);
     setShowForm(true);
     setImagePreviewUrl(carType.imageUrl || null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""; // Clear file input
+    }
   };
   
   const handleClearImage = () => {
-    setValue('imageUrlInput', undefined);
+    setValue('imageUrlInput', undefined); // Clear the FileList
     setValue('existingImageUrl', ''); 
     setValue('existingPublicId', '');
     if(fileInputRef.current) {
@@ -134,27 +139,29 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
         const imageFile = data.imageUrlInput && data.imageUrlInput.length > 0 ? data.imageUrlInput[0] : null;
 
         if (editingCarType) {
+          // For updates, imageFile can be null if user doesn't change it
           if (!imageFile && !data.existingImageUrl) {
-             toast({ title: 'خطأ في الصورة', description: 'يجب توفير صورة للمتابعة.', variant: 'destructive' });
+             toast({ title: 'خطأ في الصورة', description: 'يجب توفير صورة للمتابعة أو الإبقاء على الصورة الحالية.', variant: 'destructive' });
              return;
           }
           await updateCarTypeAdmin(editingCarType.id!, { 
             label: data.label,
+            order: data.order,
             imageUrlInput: imageFile, // Pass the file or null
             currentImageUrl: editingCarType.imageUrl, 
-            currentPublicId: editingCarType.publicId, // Pass current publicId
-            order: data.order,
+            currentPublicId: editingCarType.publicId,
           });
           toast({ title: 'تم التحديث', description: `تم تحديث نوع السيارة: ${data.label}` });
         } else {
+           // For adds, imageFile must exist
            if (!imageFile) {
-            toast({ title: 'خطأ في الصورة', description: 'الرجاء اختيار ملف صورة.', variant: 'destructive' });
+            toast({ title: 'خطأ في الصورة', description: 'الرجاء اختيار ملف صورة لإضافته.', variant: 'destructive' });
             return;
           }
           await addCarTypeAdmin({
             label: data.label,
-            imageUrlInput: imageFile, // Must be a file for add
             order: data.order,
+            imageUrlInput: imageFile, // Must be a file for add
           });
           toast({ title: 'تمت الإضافة', description: `تمت إضافة نوع السيارة: ${data.label}` });
         }
@@ -174,7 +181,6 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
   const handleDelete = (carType: CarTypeOptionAdmin) => {
     startTransition(async () => {
       try {
-        // deleteCarTypeAdmin in service will handle deleting image from Cloudinary using publicId
         await deleteCarTypeAdmin(carType.id!); 
         toast({ title: 'تم الحذف', description: `تم حذف نوع السيارة: ${carType.label}` });
         router.refresh();
@@ -218,6 +224,9 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
               order: defaultOrder 
           });
           setImagePreviewUrl(null);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = ""; // Clear file input
+          }
       }} className="mb-4 bg-accent hover:bg-accent/90 text-accent-foreground">
         <PlusCircle className="ml-2 h-4 w-4" /> إضافة نوع سيارة جديد
       </Button>
@@ -265,7 +274,7 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
             <input type="hidden" {...register('existingPublicId')} />
             {errors.imageUrlInput && <p className="text-sm text-destructive mt-1">{errors.imageUrlInput.message}</p>}
              {editingCarType && !imagePreviewUrl && !watchedImageUrlInput?.length && (
-              <p className="text-xs text-muted-foreground mt-1">اترك حقل الملف فارغًا للاحتفاظ بالصورة الحالية.</p>
+              <p className="text-xs text-muted-foreground mt-1">اترك حقل الملف فارغًا للاحتفاظ بالصورة الحالية: {editingCarType.label}.</p>
             )}
           </div>
 

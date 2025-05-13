@@ -1,3 +1,4 @@
+
 // src/components/admin/CarModelManager.tsx
 'use client';
 
@@ -69,6 +70,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
       existingPublicId: '',
       type: '',
       order: 0,
+      imageUrlInput: undefined,
     },
   });
 
@@ -100,6 +102,9 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
     setValue('order', carModel.order);
     setShowForm(true);
     setImagePreviewUrl(carModel.imageUrl || null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""; // Clear file input
+    }
   };
   
   const handleClearImage = () => {
@@ -137,28 +142,28 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
 
         if (editingCarModel) {
           if (!imageFile && !data.existingImageUrl) {
-            toast({ title: 'خطأ في الصورة', description: 'يجب توفير صورة للمتابعة.', variant: 'destructive' });
+            toast({ title: 'خطأ في الصورة', description: 'يجب توفير صورة للمتابعة أو الإبقاء على الصورة الحالية.', variant: 'destructive' });
             return;
           }
           await updateCarModelAdmin(editingCarModel.id!, { 
             label: data.label,
-            imageUrlInput: imageFile,
-            currentImageUrl: editingCarModel.imageUrl,
-            currentPublicId: editingCarModel.publicId, // Pass current publicId
             type: data.type,
             order: data.order,
+            imageUrlInput: imageFile,
+            currentImageUrl: editingCarModel.imageUrl,
+            currentPublicId: editingCarModel.publicId,
           });
           toast({ title: 'تم التحديث', description: `تم تحديث موديل السيارة: ${data.label}` });
         } else {
           if (!imageFile) {
-            toast({ title: 'خطأ في الصورة', description: 'الرجاء اختيار ملف صورة.', variant: 'destructive' });
+            toast({ title: 'خطأ في الصورة', description: 'الرجاء اختيار ملف صورة لإضافته.', variant: 'destructive' });
             return;
           }
           await addCarModelAdmin({
             label: data.label,
-            imageUrlInput: imageFile, // Must be a file for add
             type: data.type,
             order: data.order,
+            imageUrlInput: imageFile, 
           });
           toast({ title: 'تمت الإضافة', description: `تمت إضافة موديل السيارة: ${data.label}` });
         }
@@ -178,7 +183,6 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
   const handleDelete = (carModel: CarModelOptionAdmin) => {
     startTransition(async () => {
       try {
-        // deleteCarModelAdmin in service will handle deleting image from Cloudinary using publicId
         await deleteCarModelAdmin(carModel.id!);
         toast({ title: 'تم الحذف', description: `تم حذف موديل السيارة: ${carModel.label}` });
         router.refresh();
@@ -224,6 +228,9 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
             order: defaultOrder 
             });
           setImagePreviewUrl(null);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = ""; // Clear file input
+          }
         }}  
         className="mb-4 bg-accent hover:bg-accent/90 text-accent-foreground"
         disabled={allCarTypes.length === 0}
@@ -276,7 +283,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
             <input type="hidden" {...register('existingPublicId')} />
             {errors.imageUrlInput && <p className="text-sm text-destructive mt-1">{errors.imageUrlInput.message}</p>}
             {editingCarModel && !imagePreviewUrl && !watchedImageUrlInput?.length && (
-              <p className="text-xs text-muted-foreground mt-1">اترك حقل الملف فارغًا للاحتفاظ بالصورة الحالية.</p>
+              <p className="text-xs text-muted-foreground mt-1">اترك حقل الملف فارغًا للاحتفاظ بالصورة الحالية: {editingCarModel.label}.</p>
             )}
           </div>
 
