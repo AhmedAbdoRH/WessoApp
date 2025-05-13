@@ -2,8 +2,9 @@
 import { AppConfigManager } from '@/components/admin/AppConfigManager';
 import { CarModelManager } from '@/components/admin/CarModelManager';
 import { CarTypeManager } from '@/components/admin/CarTypeManager';
+import { PhoneNumberManager } from '@/components/admin/PhoneNumberManager'; // Import PhoneNumberManager
 import { Button } from '@/components/ui/button';
-import { getAppConfig, getCarTypesAdmin, getCarModelsAdmin } from '@/services/adminService';
+import { getAppConfig, getCarTypesAdmin, getCarModelsAdmin, getPhoneNumbersAdmin } from '@/services/adminService'; // Import getPhoneNumbersAdmin
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
@@ -18,6 +19,7 @@ export default async function AdminPage() {
   const appConfig = await getAppConfig();
   const carTypes = await getCarTypesAdmin();
   const carModels = await getCarModelsAdmin(); // Fetch all for model manager context
+  const phoneNumbers = await getPhoneNumbersAdmin(); // Fetch phone numbers
 
   return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8 min-h-screen">
@@ -45,6 +47,11 @@ export default async function AdminPage() {
         <h2 className="admin-section-title">إدارة موديلات السيارات</h2>
         {/* Pass carTypes for the dropdown in CarModelManager */}
         <CarModelManager initialCarModels={carModels} allCarTypes={carTypes.map(ct => ({ value: ct.value, label: ct.label }))} />
+      </section>
+
+      <section className="admin-section">
+        <h2 className="admin-section-title">أرقام هواتف العملاء</h2>
+        <PhoneNumberManager initialPhoneNumbers={phoneNumbers} />
       </section>
       
       {/* Add a note about Firestore security rules */}

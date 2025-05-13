@@ -16,7 +16,7 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
-import type { AppConfig, CarTypeOptionAdmin, CarModelOptionAdmin } from '@/types/admin';
+import type { AppConfig, CarTypeOptionAdmin, CarModelOptionAdmin, CustomerContactAdmin } from '@/types/admin';
 import { slugify } from '@/lib/slugify';
 import crypto from 'crypto';
 
@@ -24,6 +24,7 @@ const APP_CONFIG_COLLECTION = 'appConfig';
 const APP_CONFIG_DOC_ID = 'main';
 const CAR_TYPES_COLLECTION = 'carTypes';
 const CAR_MODELS_COLLECTION = 'carModels';
+const CUSTOMER_CONTACTS_COLLECTION = 'customerContacts'; // New collection for phone numbers
 
 // --- App Configuration ---
 export async function getAppConfig(): Promise<AppConfig | null> {
@@ -57,7 +58,7 @@ export async function updateAppConfigAdmin(formData: FormData): Promise<void> {
     if (logoFile) {
       // New logo uploaded
       if (currentLogoPublicId) {
-        await deleteImageFromCloudinary(currentLogoPublicId).catch(e => console.warn("Failed to delete old app logo, continuing:", e.message));
+        await deleteImageFromCloudinary(currentLogoPublicId).catch(e => console.warn("Failed to delete old app logo, continuing:", e instanceof Error ? e.message : String(e)));
       }
       const uploadResult = await uploadImageToCloudinary(logoFile, 'app_logos');
       configUpdate.logoUrl = uploadResult.secure_url;
@@ -65,18 +66,19 @@ export async function updateAppConfigAdmin(formData: FormData): Promise<void> {
     } else if (removeLogo) {
       // User wants to remove the existing logo
       if (currentLogoPublicId) {
-        await deleteImageFromCloudinary(currentLogoPublicId).catch(e => console.warn("Failed to delete app logo for removal, continuing:", e.message));
+        await deleteImageFromCloudinary(currentLogoPublicId).catch(e => console.warn("Failed to delete app logo for removal, continuing:", e instanceof Error ? e.message : String(e)));
       }
       configUpdate.logoUrl = '';
       configUpdate.logoPublicId = '';
     } else {
-      // No new logo, not removing explicitly. Keep existing if it was there.
-      // If currentLogoPublicId was passed, it implies there was a logo.
-      // If it wasn't, there wasn't one or it was already cleared.
-      // We'll fetch the existing config to be sure we don't accidentally clear it if no changes were made to the logo.
       const existingConfig = await getAppConfig();
-      configUpdate.logoUrl = existingConfig?.logoUrl || '';
-      configUpdate.logoPublicId = existingConfig?.logoPublicId || '';
+      if (existingConfig?.logoUrl && existingConfig?.logoPublicId){
+        configUpdate.logoUrl = existingConfig.logoUrl;
+        configUpdate.logoPublicId = existingConfig.logoPublicId;
+      } else {
+        configUpdate.logoUrl = '';
+        configUpdate.logoPublicId = '';
+      }
     }
 
     const docRef = doc(db, APP_CONFIG_COLLECTION, APP_CONFIG_DOC_ID);
@@ -267,19 +269,19 @@ export async function updateCarTypeAdmin(
 
     if (imageUrlInput instanceof File) { 
       if (data.currentPublicId) { 
-        await deleteImageFromCloudinary(data.currentPublicId);
+        await deleteImageFromCloudinary(data.currentPublicId).catch(e => console.warn("Failed to delete old car type image, continuing:", e instanceof Error ? e.message : String(e)));
       }
       const uploadResult = await uploadImageToCloudinary(imageUrlInput, 'car_types');
       newImageUrl = uploadResult.secure_url;
       newPublicId = uploadResult.public_id;
     } else if (imageUrlInput === null && data.currentPublicId) { 
-      await deleteImageFromCloudinary(data.currentPublicId);
+      await deleteImageFromCloudinary(data.currentPublicId).catch(e => console.warn("Failed to delete car type image for removal, continuing:", e instanceof Error ? e.message : String(e)));
       newImageUrl = '';
       newPublicId = '';
     }
   
     const docRef = doc(db, CAR_TYPES_COLLECTION, id);
-    const updatePayload: Partial<Omit<CarTypeOptionAdmin, 'id' | 'currentImageUrl' | 'currentPublicId'>> = { 
+    const updatePayload: Partial<Omit<CarTypeOptionAdmin, 'id'>> = { 
         ...(updateDataFromForm.label && { label: updateDataFromForm.label }),
         ...(updateDataFromForm.order !== undefined && { order: updateDataFromForm.order }),
      };
@@ -291,9 +293,10 @@ export async function updateCarTypeAdmin(
       }
     }
 
+    // Only update image fields if they have actually changed
     if (newImageUrl !== data.currentImageUrl || newPublicId !== data.currentPublicId) {
-      updatePayload.imageUrl = newImageUrl;
-      updatePayload.publicId = newPublicId;
+      updatePayload.imageUrl = newImageUrl || ''; // Ensure empty string if newImageUrl is undefined
+      updatePayload.publicId = newPublicId || ''; // Ensure empty string if newPublicId is undefined
     }
     
     if (Object.keys(updatePayload).length > 0) {
@@ -323,7 +326,7 @@ export async function deleteCarTypeAdmin(id: string): Promise<void> {
     }
 
     if (publicIdToDelete) {
-      await deleteImageFromCloudinary(publicIdToDelete);
+      await deleteImageFromCloudinary(publicIdToDelete).catch(e => console.warn("Failed to delete car type image from Cloudinary, continuing with Firestore delete:", e instanceof Error ? e.message : String(e)));
     }
     await deleteDoc(carTypeDocRef);
 
@@ -335,7 +338,7 @@ export async function deleteCarTypeAdmin(id: string): Promise<void> {
     modelsSnapshot.forEach((modelDoc) => {
       const modelData = modelDoc.data() as CarModelOptionAdmin;
       if (modelData.publicId) {
-        modelImageDeletions.push(deleteImageFromCloudinary(modelData.publicId));
+        modelImageDeletions.push(deleteImageFromCloudinary(modelData.publicId).catch(e => console.warn(`Failed to delete car model image ${modelData.publicId}, continuing:`, e instanceof Error ? e.message : String(e))));
       }
       batch.delete(modelDoc.ref);
     });
@@ -413,19 +416,19 @@ export async function updateCarModelAdmin(
 
     if (imageUrlInput instanceof File) { 
       if (data.currentPublicId) {
-        await deleteImageFromCloudinary(data.currentPublicId);
+        await deleteImageFromCloudinary(data.currentPublicId).catch(e => console.warn("Failed to delete old car model image, continuing:", e instanceof Error ? e.message : String(e)));
       }
       const uploadResult = await uploadImageToCloudinary(imageUrlInput, `car_models/${updateDataFromForm.type || 'general'}`);
       newImageUrl = uploadResult.secure_url;
       newPublicId = uploadResult.public_id;
     } else if (imageUrlInput === null && data.currentPublicId) {
-      await deleteImageFromCloudinary(data.currentPublicId);
+      await deleteImageFromCloudinary(data.currentPublicId).catch(e => console.warn("Failed to delete car model image for removal, continuing:", e instanceof Error ? e.message : String(e)));
       newImageUrl = '';
       newPublicId = '';
     }
 
     const docRef = doc(db, CAR_MODELS_COLLECTION, id);
-    const updatePayload: Partial<Omit<CarModelOptionAdmin, 'id' | 'currentImageUrl' | 'currentPublicId'>> = {
+    const updatePayload: Partial<Omit<CarModelOptionAdmin, 'id' >> = {
         ...(updateDataFromForm.label && { label: updateDataFromForm.label }),
         ...(updateDataFromForm.type && { type: updateDataFromForm.type }),
         ...(updateDataFromForm.order !== undefined && { order: updateDataFromForm.order }),
@@ -437,10 +440,10 @@ export async function updateCarModelAdmin(
         updatePayload.value = slugify(updateDataFromForm.label);
       }
     }
-
+    
     if (newImageUrl !== data.currentImageUrl || newPublicId !== data.currentPublicId) {
-      updatePayload.imageUrl = newImageUrl;
-      updatePayload.publicId = newPublicId;
+      updatePayload.imageUrl = newImageUrl || '';
+      updatePayload.publicId = newPublicId || '';
     }
     
     if (Object.keys(updatePayload).length > 0) {
@@ -462,7 +465,7 @@ export async function deleteCarModelAdmin(id: string): Promise<void> {
     if (carModelDocSnap.exists()) {
       const carModelData = carModelDocSnap.data() as CarModelOptionAdmin;
       if (carModelData.publicId) {
-        await deleteImageFromCloudinary(carModelData.publicId);
+        await deleteImageFromCloudinary(carModelData.publicId).catch(e => console.warn(`Failed to delete car model image ${carModelData.publicId} from Cloudinary, continuing:`, e instanceof Error ? e.message : String(e)));
       }
     }
     await deleteDoc(carModelDocRef);
@@ -487,7 +490,6 @@ export async function getCarTypesForBooking(): Promise<Omit<CarTypeOptionAdmin, 
         value: data.value, 
         label: data.label,
         imageUrl: data.imageUrl,
-        ...(data.dataAiHint && { dataAiHint: data.dataAiHint }),
       } as Omit<CarTypeOptionAdmin, 'order' | 'id' | 'publicId'>;
     });
   } catch (error) {
@@ -511,11 +513,42 @@ export async function getCarModelsForBooking(carTypeValue: string): Promise<Omit
         value: data.value, 
         label: data.label,
         imageUrl: data.imageUrl,
-        ...(data.dataAiHint && { dataAiHint: data.dataAiHint }),
       } as Omit<CarModelOptionAdmin, 'order' | 'type'| 'id' | 'publicId'>;
     });
   } catch (error) {
     console.error("Error in getCarModelsForBooking (type: " + carTypeValue + "):", error);
     return [];
+  }
+}
+
+
+// --- Customer Phone Numbers ---
+export async function getPhoneNumbersAdmin(): Promise<CustomerContactAdmin[]> {
+  try {
+    const q = query(collection(db, CUSTOMER_CONTACTS_COLLECTION), orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(docSnap => ({
+      id: docSnap.id,
+      ...docSnap.data(),
+    } as CustomerContactAdmin));
+  } catch (error) {
+    console.error("Error in getPhoneNumbersAdmin:", error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to get phone numbers: ${error.message}`);
+    }
+    throw new Error('An unknown error occurred while fetching phone numbers.');
+  }
+}
+
+export async function deletePhoneNumberAdmin(id: string): Promise<void> {
+  try {
+    const phoneNumberDocRef = doc(db, CUSTOMER_CONTACTS_COLLECTION, id);
+    await deleteDoc(phoneNumberDocRef);
+  } catch (error) {
+    console.error("Error in deletePhoneNumberAdmin:", error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to delete phone number: ${error.message}`);
+    }
+    throw new Error('An unknown error occurred while deleting phone number.');
   }
 }

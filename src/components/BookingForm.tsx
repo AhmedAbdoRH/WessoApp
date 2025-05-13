@@ -22,7 +22,7 @@ import { OrderSummary } from "./steps/OrderSummary";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { getCarTypesForBooking, getCarModelsForBooking, getAppConfig } from '@/services/adminService'; 
+import { getCarTypesForBooking, getCarModelsForBooking } from '@/services/adminService'; 
 import type { CarTypeOptionAdmin } from '@/types/admin';
 
 
@@ -63,7 +63,7 @@ type StepDefinition = {
 const BookingForm: FC = () => {
   // --- State Hooks ---
   const [currentStep, setCurrentStep] = useState(0);
-  const [carTypes, setCarTypes] = useState<Omit<CarTypeOptionAdmin, 'order' | 'id' | 'publicId' | 'dataAiHint'>[]>([]);
+  const [carTypes, setCarTypes] = useState<Omit<CarTypeOptionAdmin, 'order' | 'id' | 'publicId' >[]>([]);
   const [isLoadingInitialData, setIsLoadingInitialData] = useState(true);
   
   // --- Custom Hooks ---
@@ -242,19 +242,35 @@ const BookingForm: FC = () => {
     }
     
      try {
-        const docData = {
+        const bookingDocData = { // Renamed to avoid confusion
           ...data,
           carTypeLabel: carTypeLabelValue, 
           carModelLabel: carModelLabelValue, 
           createdAt: new Date().toISOString(),
         };
 
-        await addDoc(collection(db, "bookings"), docData);
+        await addDoc(collection(db, "bookings"), bookingDocData);
         
         toast({
             title: "تم إرسال الطلب بنجاح!",
             description: "تم حفظ طلب الحجز الخاص بك، وسيتم التواصل معك قريباً.",
         });
+
+         // Save customer contact info to 'customerContacts' collection
+        try {
+            const contactData = {
+                firstName: data.firstName,
+                phoneNumber: data.phoneNumber,
+                createdAt: new Date().toISOString(),
+            };
+            await addDoc(collection(db, "customerContacts"), contactData);
+            console.log("Customer contact saved to Firestore.");
+        } catch (contactError) {
+            console.error("Error saving customer contact to Firestore:", contactError);
+            // Optional: Notify user if contact saving fails, but primary booking was saved.
+            // For now, just log it.
+        }
+
 
      } catch (error) {
        console.error("Error submitting booking to Firestore:", error);
@@ -277,10 +293,10 @@ const BookingForm: FC = () => {
 🧳 عدد الحقائب: ${data.bags}
 ━━━━━━━━━━━━━━━━━━
 📍 مكان الانطلاق: ${data.pickupLocation.address}
-${pickupMapLink ? `[رابط الخريطة](${pickupMapLink})` : ''}
+${pickupMapLink ? `${pickupMapLink}` : ''}
 ━━━━━━━━━━━━━━━━━━
 🏁 وجهة الوصول: ${data.dropoffLocation.address}
-${dropoffMapLink ? `[رابط الخريطة](${dropoffMapLink})` : ''}
+${dropoffMapLink ? `${dropoffMapLink}` : ''}
 ━━━━━━━━━━━━━━━━━━
 👤 اسم العميل: ${data.firstName}
 📞 رقم هاتف العميل: ${data.phoneNumber}
@@ -387,4 +403,5 @@ ${dropoffMapLink ? `[رابط الخريطة](${dropoffMapLink})` : ''}
 export default BookingForm;
 
       
+
 
