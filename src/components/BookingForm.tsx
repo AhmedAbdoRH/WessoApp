@@ -218,7 +218,7 @@ const BookingForm: FC = () => {
          return;
      }
 
-    // Prepare data for both Firestore and WhatsApp message
+    // Prepare data for Firestore and WhatsApp message
     let carTypeLabelValue = data.carType;
     const carTypeFromState = carTypes.find(ct => ct.value === data.carType);
     if (carTypeFromState) {
@@ -242,7 +242,7 @@ const BookingForm: FC = () => {
     }
     
      try {
-        const bookingDocData = { // Renamed to avoid confusion
+        const bookingDocData = {
           ...data,
           carTypeLabel: carTypeLabelValue, 
           carModelLabel: carModelLabelValue, 
@@ -256,22 +256,6 @@ const BookingForm: FC = () => {
             description: "تم حفظ طلب الحجز الخاص بك، وسيتم التواصل معك قريباً.",
         });
 
-         // Save customer contact info to 'customerContacts' collection
-        try {
-            const contactData = {
-                firstName: data.firstName,
-                phoneNumber: data.phoneNumber,
-                createdAt: new Date().toISOString(),
-            };
-            await addDoc(collection(db, "customerContacts"), contactData);
-            console.log("Customer contact saved to Firestore.");
-        } catch (contactError) {
-            console.error("Error saving customer contact to Firestore:", contactError);
-            // Optional: Notify user if contact saving fails, but primary booking was saved.
-            // For now, just log it.
-        }
-
-
      } catch (error) {
        console.error("Error submitting booking to Firestore:", error);
        toast({
@@ -280,6 +264,25 @@ const BookingForm: FC = () => {
          variant: "destructive",
        });
      }
+
+     // Attempt to save customer contact info, regardless of main booking save success
+     try {
+        const contactData = {
+            firstName: data.firstName,
+            phoneNumber: data.phoneNumber,
+            createdAt: new Date().toISOString(),
+        };
+        await addDoc(collection(db, "customerContacts"), contactData);
+        console.log("Customer contact saved to Firestore.");
+    } catch (contactError) {
+        console.error("Error saving customer contact to Firestore:", contactError);
+        // Optional: Notify user if contact saving fails
+        // toast({
+        //   title: "خطأ في حفظ بيانات الاتصال",
+        //   description: "لم نتمكن من حفظ معلومات الاتصال الخاصة بك.",
+        //   variant: "destructive",
+        // });
+    }
      
     const pickupMapLink = getGoogleMapsLinkFromAddress(data.pickupLocation.address);
     const dropoffMapLink = getGoogleMapsLinkFromAddress(data.dropoffLocation.address);
@@ -300,7 +303,7 @@ ${dropoffMapLink ? `${dropoffMapLink}` : ''}
 ━━━━━━━━━━━━━━━━━━
 👤 اسم العميل: ${data.firstName}
 📞 رقم هاتف العميل: ${data.phoneNumber}
-    `.trim().replace(/\n\s+/g, '\n'); // Trim and remove leading spaces from newlines
+    `.trim().replace(/\n\s+/g, '\n'); 
 
     const encodedMessage = encodeURIComponent(message);
     const targetPhoneNumber = "201100434503"; 
@@ -403,5 +406,6 @@ ${dropoffMapLink ? `${dropoffMapLink}` : ''}
 export default BookingForm;
 
       
+
 
 
