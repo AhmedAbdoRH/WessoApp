@@ -1,6 +1,4 @@
 
-
-
 "use client";
 
 import type { FC } from 'react';
@@ -259,11 +257,12 @@ const BookingForm: FC = () => {
 
      } catch (error) {
        console.error("Error submitting booking to Firestore:", error);
-       toast({
-         title: "خطأ في حفظ الطلب",
-         description: "تعذر حفظ طلب الحجز في قاعدة البيانات. سيتم الآن محاولة إرساله عبر واتساب.",
-         variant: "destructive",
-       });
+       // Removed toast message for Firestore submission failure, as WhatsApp submission will still be attempted.
+       // toast({
+       //   title: "خطأ في حفظ الطلب",
+       //   description: "تعذر حفظ طلب الحجز في قاعدة البيانات. سيتم الآن محاولة إرساله عبر واتساب.",
+       //   variant: "destructive",
+       // });
      }
 
      // Attempt to save customer contact info, only if it doesn't exist
@@ -295,13 +294,13 @@ const BookingForm: FC = () => {
 🧍‍♂️ عدد الركاب: ${data.passengers}
 🧳 عدد الحقائب: ${data.bags}
 ━━━━━━━━━━━━━━━━━━
-📍 مكان الانطلاق: ${data.pickupLocation.address} ${pickupMapLink ? `رابط الخريطة (${pickupMapLink})` : ''}
+📍 مكان الانطلاق: ${data.pickupLocation.address}${pickupMapLink ? `\nرابط الخريطة (${pickupMapLink})` : ''}
 ━━━━━━━━━━━━━━━━━━
-🏁 وجهة الوصول: ${data.dropoffLocation.address} ${dropoffMapLink ? `رابط الخريطة (${dropoffMapLink})` : ''}
+🏁 وجهة الوصول: ${data.dropoffLocation.address}${dropoffMapLink ? `\nرابط الخريطة (${dropoffMapLink})` : ''}
 ━━━━━━━━━━━━━━━━━━
 👤 اسم العميل: ${data.firstName}
 📞 رقم هاتف العميل: ${data.phoneNumber}
-    `.trim().replace(/\n\s+/g, '\n'); 
+    `.trim().replace(/^\s+/gm, ''); // Use replace with /gm to remove leading spaces from all lines
 
     const encodedMessage = encodeURIComponent(message);
     const targetPhoneNumber = "201100434503"; 
@@ -336,7 +335,7 @@ const BookingForm: FC = () => {
         aria-live="polite"
         noValidate
       >
-         <Progress value={progressPercentage} className="w-full mb-6 h-2 bg-white/20 dark:bg-black/20 [&>div]:bg-primary" dir="ltr" />
+         <Progress value={progressPercentage} className="w-full mb-6 h-3 bg-transparent dark:bg-transparent [&>div]:bg-primary" dir="ltr" />
           
           <motion.div
             key={currentStep} 
@@ -353,13 +352,13 @@ const BookingForm: FC = () => {
              />
           </motion.div>
 
-        <div className="flex justify-between items-center mt-8 pt-4 border-t border-white/20 dark:border-black/20 relative">
+        <div className="flex justify-between items-center mt-8 pt-4 border-t border-border/20 relative">
            {currentStep > 0 && (
              <Button
                type="button"
                onClick={handlePrevious}
                disabled={isSubmitting}
-               className="glass-button disabled:opacity-50 disabled:cursor-not-allowed absolute left-0 text-white" 
+               className="glass-button disabled:opacity-50 disabled:cursor-not-allowed absolute left-0 text-accent-foreground dark:text-accent-foreground" 
                aria-label="الخطوة السابقة"
              >
                <ArrowLeft className="h-5 w-5" />
@@ -402,11 +401,3 @@ const BookingForm: FC = () => {
 };
 
 export default BookingForm;
-
-      
-
-
-
-
-
-
