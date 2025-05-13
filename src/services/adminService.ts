@@ -26,9 +26,9 @@ const APP_CONFIG_DOC_ID = 'main';
 const CAR_TYPES_COLLECTION = 'carTypes';
 const CAR_MODELS_COLLECTION = 'carModels';
 
-const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
-const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY;
-const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
+const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || 'dvikey3wc';
+const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY || '196682313419854';
+const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET || 'xINZtG4stKRI6dAhJYQFkpld9R8';
 
 // --- App Configuration ---
 export async function getAppConfig(): Promise<AppConfig | null> {
@@ -68,7 +68,7 @@ function generateSignature(paramsToSign: Record<string, string | number>, apiSec
 
 async function uploadImageToCloudinary(file: File, folder: string): Promise<{ secure_url: string; public_id: string }> {
   if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
-    console.error('Cloudinary credentials are not configured in .env file.');
+    console.error('Cloudinary credentials are not configured in .env file or service.');
     throw new Error('فشل تحميل الصورة: لم يتم تكوين خدمة تحميل الصور بشكل صحيح (بيانات اعتماد Cloudinary مفقودة).');
   }
 
@@ -155,9 +155,9 @@ export async function getCarTypesAdmin(): Promise<CarTypeOptionAdmin[]> {
 }
 
 export async function addCarTypeAdmin(
-  data: Omit<CarTypeOptionAdmin, 'id' | 'value' | 'imageUrl' | 'publicId'> & { imageUrlInput: File }
+  data: Omit<CarTypeOptionAdmin, 'id' | 'value' | 'imageUrl' | 'publicId' | 'imageUrlInput'> & { imageUrlInput: File }
 ): Promise<void> {
-  const { imageUrlInput, ...restOfData } = data; // Destructure imageUrlInput
+  const { imageUrlInput, ...restOfData } = data; 
   const { secure_url, public_id } = await uploadImageToCloudinary(imageUrlInput, 'car_types');
   const value = slugify(restOfData.label);
   await addDoc(collection(db, CAR_TYPES_COLLECTION), { ...restOfData, value, imageUrl: secure_url, publicId: public_id });
@@ -165,43 +165,46 @@ export async function addCarTypeAdmin(
 
 export async function updateCarTypeAdmin(
   id: string,
-  data: Partial<Omit<CarTypeOptionAdmin, 'id' | 'value' | 'imageUrl' | 'publicId'>> & { imageUrlInput?: File | null, currentImageUrl?: string, currentPublicId?: string }
+  data: Partial<Omit<CarTypeOptionAdmin, 'id' | 'value' | 'imageUrl' | 'publicId' | 'imageUrlInput'>> & { imageUrlInput?: File | null, currentImageUrl?: string, currentPublicId?: string }
 ): Promise<void> {
   let newImageUrl = data.currentImageUrl;
   let newPublicId = data.currentPublicId;
 
-  if (data.imageUrlInput) { 
-    if (data.currentPublicId) {
-      await deleteImageFromCloudinary(data.currentPublicId);
+  const { imageUrlInput, currentImageUrl, currentPublicId, ...updateData } = data; // Exclude imageUrlInput early
+
+  if (imageUrlInput) { 
+    if (currentPublicId) {
+      await deleteImageFromCloudinary(currentPublicId);
     }
-    const uploadResult = await uploadImageToCloudinary(data.imageUrlInput, 'car_types');
+    const uploadResult = await uploadImageToCloudinary(imageUrlInput, 'car_types');
     newImageUrl = uploadResult.secure_url;
     newPublicId = uploadResult.public_id;
-  } else if (data.imageUrlInput === null && typeof data.existingImageUrl !== 'undefined' && !data.existingImageUrl && data.currentPublicId) { 
-    // This condition means imageUrlInput is null (cleared), and existingImageUrl is empty string, and there was a currentPublicId
-    await deleteImageFromCloudinary(data.currentPublicId);
+  } else if (imageUrlInput === null && typeof updateData.existingImageUrl !== 'undefined' && !updateData.existingImageUrl && currentPublicId) { 
+    await deleteImageFromCloudinary(currentPublicId);
     newImageUrl = '';
     newPublicId = '';
   }
 
-
-  const { imageUrlInput, currentImageUrl, currentPublicId, ...updateData } = data;
   const docRef = doc(db, CAR_TYPES_COLLECTION, id);
 
-  const updatePayload: Partial<CarTypeOptionAdmin> = { ...updateData };
+  const updatePayload: Partial<Omit<CarTypeOptionAdmin, 'imageUrlInput'>> = { ...updateData };
   if (updateData.label) {
     const currentDoc = await getDoc(docRef);
     if (currentDoc.exists() && updateData.label !== currentDoc.data()?.label) {
       updatePayload.value = slugify(updateData.label);
     }
   }
-  // Only update imageUrl and publicId if they have actually changed
-  if (newImageUrl !== data.currentImageUrl || newPublicId !== data.currentPublicId) {
+  
+  // Only update imageUrl and publicId if they have actually changed from initial state
+  if (newImageUrl !== currentImageUrl || newPublicId !== currentPublicId) {
     updatePayload.imageUrl = newImageUrl;
     updatePayload.publicId = newPublicId;
   }
   
-  await updateDoc(docRef, updatePayload);
+  // Remove existingImageUrl as it's just for form logic, not Firestore
+  delete (updatePayload as any).existingImageUrl;
+
+  await updateDoc(docRef, updatePayload as any); 
 }
 
 export async function deleteCarTypeAdmin(id: string): Promise<void> {
@@ -232,7 +235,7 @@ export async function deleteCarTypeAdmin(id: string): Promise<void> {
     }
     batch.delete(modelDoc.ref);
   });
-  await Promise.all(modelImageDeletions); // Wait for all Cloudinary deletions for models
+  await Promise.all(modelImageDeletions); 
   await batch.commit();
 }
 
@@ -244,9 +247,9 @@ export async function getCarModelsAdmin(): Promise<CarModelOptionAdmin[]> {
 }
 
 export async function addCarModelAdmin(
-  data: Omit<CarModelOptionAdmin, 'id' | 'value' | 'imageUrl' | 'publicId'> & { imageUrlInput: File }
+  data: Omit<CarModelOptionAdmin, 'id' | 'value' | 'imageUrl' | 'publicId' | 'imageUrlInput'> & { imageUrlInput: File }
 ): Promise<void> {
-  const { imageUrlInput, ...restOfData } = data; // Destructure imageUrlInput
+  const { imageUrlInput, ...restOfData } = data; 
   const { secure_url, public_id } = await uploadImageToCloudinary(imageUrlInput, `car_models/${restOfData.type || 'general'}`);
   const value = slugify(restOfData.label);
   await addDoc(collection(db, CAR_MODELS_COLLECTION), { ...restOfData, value, imageUrl: secure_url, publicId: public_id });
@@ -254,41 +257,44 @@ export async function addCarModelAdmin(
 
 export async function updateCarModelAdmin(
   id: string,
-  data: Partial<Omit<CarModelOptionAdmin, 'id'| 'value' | 'imageUrl'| 'publicId'>> & { imageUrlInput?: File | null, currentImageUrl?: string, currentPublicId?: string }
+  data: Partial<Omit<CarModelOptionAdmin, 'id'| 'value' | 'imageUrl'| 'publicId' | 'imageUrlInput'>> & { imageUrlInput?: File | null, currentImageUrl?: string, currentPublicId?: string }
 ): Promise<void> {
   let newImageUrl = data.currentImageUrl;
   let newPublicId = data.currentPublicId;
 
-  if (data.imageUrlInput) {
-    if (data.currentPublicId) {
-      await deleteImageFromCloudinary(data.currentPublicId);
+  const { imageUrlInput, currentImageUrl, currentPublicId, ...updateData } = data; // Exclude imageUrlInput early
+
+  if (imageUrlInput) {
+    if (currentPublicId) {
+      await deleteImageFromCloudinary(currentPublicId);
     }
-    const uploadResult = await uploadImageToCloudinary(data.imageUrlInput, `car_models/${data.type || 'general'}`);
+    const uploadResult = await uploadImageToCloudinary(imageUrlInput, `car_models/${updateData.type || 'general'}`);
     newImageUrl = uploadResult.secure_url;
     newPublicId = uploadResult.public_id;
-  } else if (data.imageUrlInput === null && typeof data.existingImageUrl !== 'undefined' && !data.existingImageUrl && data.currentPublicId) {
-     // This condition means imageUrlInput is null (cleared), and existingImageUrl is empty string, and there was a currentPublicId
-     await deleteImageFromCloudinary(data.currentPublicId);
+  } else if (imageUrlInput === null && typeof updateData.existingImageUrl !== 'undefined' && !updateData.existingImageUrl && currentPublicId) {
+     await deleteImageFromCloudinary(currentPublicId);
      newImageUrl = '';
      newPublicId = '';
   }
 
-  const { imageUrlInput, currentImageUrl, currentPublicId, ...updateData } = data;
   const docRef = doc(db, CAR_MODELS_COLLECTION, id);
   
-  const updatePayload: Partial<CarModelOptionAdmin> = { ...updateData };
+  const updatePayload: Partial<Omit<CarModelOptionAdmin, 'imageUrlInput'>> = { ...updateData };
   if (updateData.label) {
     const currentDoc = await getDoc(docRef);
     if (currentDoc.exists() && updateData.label !== currentDoc.data()?.label) {
       updatePayload.value = slugify(updateData.label);
     }
   }
-  if (newImageUrl !== data.currentImageUrl || newPublicId !== data.currentPublicId) {
+  if (newImageUrl !== currentImageUrl || newPublicId !== currentPublicId) {
     updatePayload.imageUrl = newImageUrl;
     updatePayload.publicId = newPublicId;
   }
+  
+  // Remove existingImageUrl as it's just for form logic, not Firestore
+  delete (updatePayload as any).existingImageUrl;
 
-  await updateDoc(docRef, updatePayload);
+  await updateDoc(docRef, updatePayload as any); 
 }
 
 export async function deleteCarModelAdmin(id: string): Promise<void> {
@@ -305,7 +311,7 @@ export async function deleteCarModelAdmin(id: string): Promise<void> {
 
 // --- For Booking Form (Client-side data fetching) ---
 
-export async function getCarTypesForBooking(): Promise<Omit<CarTypeOptionAdmin, 'order' | 'id' | 'publicId'>[]> {
+export async function getCarTypesForBooking(): Promise<Omit<CarTypeOptionAdmin, 'order' | 'id' | 'publicId' | 'dataAiHint'>[]> {
   const q = query(collection(db, CAR_TYPES_COLLECTION), orderBy('order', 'asc'));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(docSnapshot => { 
@@ -314,11 +320,11 @@ export async function getCarTypesForBooking(): Promise<Omit<CarTypeOptionAdmin, 
       value: data.value, 
       label: data.label,
       imageUrl: data.imageUrl,
-    } as Omit<CarTypeOptionAdmin, 'order' | 'id' | 'publicId'>;
+    } as Omit<CarTypeOptionAdmin, 'order' | 'id' | 'publicId' | 'dataAiHint'>;
   });
 }
 
-export async function getCarModelsForBooking(carTypeValue: string): Promise<Omit<CarModelOptionAdmin, 'order' | 'type'| 'id' | 'publicId'>[]> {
+export async function getCarModelsForBooking(carTypeValue: string): Promise<Omit<CarModelOptionAdmin, 'order' | 'type'| 'id' | 'publicId' | 'dataAiHint'>[]> {
   if (!carTypeValue) return [];
   const q = query(
     collection(db, CAR_MODELS_COLLECTION),
@@ -332,6 +338,7 @@ export async function getCarModelsForBooking(carTypeValue: string): Promise<Omit
       value: data.value, 
       label: data.label,
       imageUrl: data.imageUrl,
-    } as Omit<CarModelOptionAdmin, 'order' | 'type'| 'id' | 'publicId'>;
+    } as Omit<CarModelOptionAdmin, 'order' | 'type'| 'id' | 'publicId' | 'dataAiHint'>;
   });
 }
+
