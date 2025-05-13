@@ -34,7 +34,11 @@ const carTypeFormSchema = z.object({
   existingImageUrl: z.string().url().optional().or(z.literal('')), // For displaying/keeping existing image
   dataAiHint: z.string().optional(),
   order: z.coerce.number().min(0, 'الترتيب يجب أن يكون 0 أو أكبر'),
-}).refine(data => data.imageUrlInput && data.imageUrlInput.length > 0 || !!data.existingImageUrl, {
+}).refine(data => {
+  const hasNewFile = data.imageUrlInput instanceof FileList && data.imageUrlInput.length > 0;
+  const hasExistingImage = !!data.existingImageUrl;
+  return hasNewFile || hasExistingImage;
+}, {
   message: "الرجاء اختيار صورة جديدة أو التأكد من وجود صورة حالية.",
   path: ["imageUrlInput"], // Associate error with the file input field
 });
@@ -54,7 +58,7 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
   const [carTypes, setCarTypes] = useState<CarTypeOptionAdmin[]>(initialCarTypes);
   const [showForm, setShowForm] = useState(false);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors, isDirty } } = useForm<CarTypeFormData>({
@@ -70,6 +74,10 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
 
   const watchedImageUrlInput = watch('imageUrlInput');
   const watchedExistingImageUrl = watch('existingImageUrl');
+  
+  // Destructure ref from register to merge with local fileInputRef
+  const { ref: imageInputRegisterRef, ...imageInputProps } = register('imageUrlInput');
+
 
   useEffect(() => {
     if (watchedImageUrlInput && watchedImageUrlInput.length > 0) {
@@ -130,9 +138,10 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
         const imageFile = data.imageUrlInput && data.imageUrlInput.length > 0 ? data.imageUrlInput[0] : null;
 
         if (editingCarType) {
+          // The schema refinement already checks this, but an explicit check here can be clearer for user feedback
           if (!imageFile && !data.existingImageUrl) {
-            toast({ title: 'خطأ', description: 'الرجاء توفير صورة.', variant: 'destructive' });
-            return;
+             toast({ title: 'خطأ في الصورة', description: 'يجب توفير صورة للمتابعة.', variant: 'destructive' });
+             return;
           }
           await updateCarTypeAdmin(editingCarType.id!, {
             label: data.label,
@@ -143,8 +152,8 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
           });
           toast({ title: 'تم التحديث', description: `تم تحديث نوع السيارة: ${data.label}` });
         } else {
-          if (!imageFile) {
-            toast({ title: 'خطأ', description: 'الرجاء اختيار ملف صورة.', variant: 'destructive' });
+           if (!imageFile) {
+            toast({ title: 'خطأ في الصورة', description: 'الرجاء اختيار ملف صورة.', variant: 'destructive' });
             return;
           }
           await addCarTypeAdmin({
@@ -253,9 +262,12 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
                     id="ct-imageUrlInput" 
                     type="file" 
                     accept="image/*" 
-                    {...register('imageUrlInput')}
+                    {...imageInputProps} // Spread props from register
+                    ref={(e) => { // Merge refs
+                        imageInputRegisterRef(e); // Pass to RHF's ref
+                        fileInputRef.current = e; // Assign to local ref
+                    }}
                     className="flex-grow"
-                    ref={fileInputRef}
                 />
                 {(imagePreviewUrl || (watchedImageUrlInput && watchedImageUrlInput.length > 0)) && (
                      <Button type="button" variant="ghost" size="sm" onClick={handleClearImage} aria-label="مسح الصورة">

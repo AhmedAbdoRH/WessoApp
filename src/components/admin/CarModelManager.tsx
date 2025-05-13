@@ -35,7 +35,11 @@ const carModelFormSchema = z.object({
   type: z.string().min(1, 'يجب اختيار نوع السيارة'),
   dataAiHint: z.string().optional(),
   order: z.coerce.number().min(0, 'الترتيب يجب أن يكون 0 أو أكبر'),
-}).refine(data => data.imageUrlInput && data.imageUrlInput.length > 0 || !!data.existingImageUrl, {
+}).refine(data => {
+  const hasNewFile = data.imageUrlInput instanceof FileList && data.imageUrlInput.length > 0;
+  const hasExistingImage = !!data.existingImageUrl;
+  return hasNewFile || hasExistingImage;
+}, {
   message: "الرجاء اختيار صورة جديدة أو التأكد من وجود صورة حالية.",
   path: ["imageUrlInput"],
 });
@@ -55,7 +59,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
   const [carModels, setCarModels] = useState<CarModelOptionAdmin[]>(initialCarModels);
   const [showForm, setShowForm] = useState(false);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
 
   const { register, handleSubmit, reset, setValue, control, watch, formState: { errors, isDirty } } = useForm<CarModelFormData>({
@@ -72,6 +76,9 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
 
   const watchedImageUrlInput = watch('imageUrlInput');
   const watchedExistingImageUrl = watch('existingImageUrl');
+  
+  // Destructure ref from register to merge with local fileInputRef
+  const { ref: imageInputRegisterRef, ...imageInputProps } = register('imageUrlInput');
 
   useEffect(() => {
     if (watchedImageUrlInput && watchedImageUrlInput.length > 0) {
@@ -134,7 +141,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
 
         if (editingCarModel) {
           if (!imageFile && !data.existingImageUrl) {
-            toast({ title: 'خطأ', description: 'الرجاء توفير صورة.', variant: 'destructive' });
+            toast({ title: 'خطأ في الصورة', description: 'يجب توفير صورة للمتابعة.', variant: 'destructive' });
             return;
           }
           await updateCarModelAdmin(editingCarModel.id!, {
@@ -148,7 +155,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
           toast({ title: 'تم التحديث', description: `تم تحديث موديل السيارة: ${data.label}` });
         } else {
           if (!imageFile) {
-            toast({ title: 'خطأ', description: 'الرجاء اختيار ملف صورة.', variant: 'destructive' });
+            toast({ title: 'خطأ في الصورة', description: 'الرجاء اختيار ملف صورة.', variant: 'destructive' });
             return;
           }
           await addCarModelAdmin({
@@ -265,9 +272,12 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
                     id="cm-imageUrlInput" 
                     type="file" 
                     accept="image/*" 
-                    {...register('imageUrlInput')}
+                    {...imageInputProps} // Spread props from register
+                    ref={(e) => { // Merge refs
+                        imageInputRegisterRef(e); // Pass to RHF's ref
+                        fileInputRef.current = e; // Assign to local ref
+                    }}
                     className="flex-grow"
-                    ref={fileInputRef}
                 />
                 {(imagePreviewUrl || (watchedImageUrlInput && watchedImageUrlInput.length > 0)) && (
                      <Button type="button" variant="ghost" size="sm" onClick={handleClearImage} aria-label="مسح الصورة">
