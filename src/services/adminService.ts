@@ -46,7 +46,6 @@ export async function getAppConfig(): Promise<AppConfig | null> {
 }
 
 export async function updateAppConfigAdmin(config: AppConfig): Promise<void> {
-  // If logoUrl is managed and uploaded via Cloudinary in the future, handle publicId here too
   const docRef = doc(db, APP_CONFIG_COLLECTION, APP_CONFIG_DOC_ID);
   await setDoc(docRef, config, { merge: true });
 }
@@ -116,7 +115,7 @@ async function deleteImageFromCloudinary(publicId: string): Promise<void> {
   }
   if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
     console.error('Cloudinary credentials are missing for deletion.');
-    return; // Do not throw, allow process to continue if deletion fails
+    return; 
   }
 
   const timestamp = Math.round(new Date().getTime() / 1000);
@@ -158,9 +157,10 @@ export async function getCarTypesAdmin(): Promise<CarTypeOptionAdmin[]> {
 export async function addCarTypeAdmin(
   data: Omit<CarTypeOptionAdmin, 'id' | 'value' | 'imageUrl' | 'publicId'> & { imageUrlInput: File }
 ): Promise<void> {
-  const { secure_url, public_id } = await uploadImageToCloudinary(data.imageUrlInput, 'car_types');
-  const value = slugify(data.label);
-  await addDoc(collection(db, CAR_TYPES_COLLECTION), { ...data, value, imageUrl: secure_url, publicId: public_id });
+  const { imageUrlInput, ...restOfData } = data; // Destructure imageUrlInput
+  const { secure_url, public_id } = await uploadImageToCloudinary(imageUrlInput, 'car_types');
+  const value = slugify(restOfData.label);
+  await addDoc(collection(db, CAR_TYPES_COLLECTION), { ...restOfData, value, imageUrl: secure_url, publicId: public_id });
 }
 
 export async function updateCarTypeAdmin(
@@ -170,19 +170,20 @@ export async function updateCarTypeAdmin(
   let newImageUrl = data.currentImageUrl;
   let newPublicId = data.currentPublicId;
 
-  if (data.imageUrlInput) { // A new file is provided
+  if (data.imageUrlInput) { 
     if (data.currentPublicId) {
       await deleteImageFromCloudinary(data.currentPublicId);
     }
     const uploadResult = await uploadImageToCloudinary(data.imageUrlInput, 'car_types');
     newImageUrl = uploadResult.secure_url;
     newPublicId = uploadResult.public_id;
-  } else if (data.imageUrlInput === null && data.currentPublicId) { 
-    // Explicitly clearing image
+  } else if (data.imageUrlInput === null && typeof data.existingImageUrl !== 'undefined' && !data.existingImageUrl && data.currentPublicId) { 
+    // This condition means imageUrlInput is null (cleared), and existingImageUrl is empty string, and there was a currentPublicId
     await deleteImageFromCloudinary(data.currentPublicId);
     newImageUrl = '';
     newPublicId = '';
   }
+
 
   const { imageUrlInput, currentImageUrl, currentPublicId, ...updateData } = data;
   const docRef = doc(db, CAR_TYPES_COLLECTION, id);
@@ -194,8 +195,11 @@ export async function updateCarTypeAdmin(
       updatePayload.value = slugify(updateData.label);
     }
   }
-  updatePayload.imageUrl = newImageUrl;
-  updatePayload.publicId = newPublicId;
+  // Only update imageUrl and publicId if they have actually changed
+  if (newImageUrl !== data.currentImageUrl || newPublicId !== data.currentPublicId) {
+    updatePayload.imageUrl = newImageUrl;
+    updatePayload.publicId = newPublicId;
+  }
   
   await updateDoc(docRef, updatePayload);
 }
@@ -217,23 +221,24 @@ export async function deleteCarTypeAdmin(id: string): Promise<void> {
   }
   await deleteDoc(carTypeDocRef);
 
-  // Delete associated car models
   const modelsQuery = query(collection(db, CAR_MODELS_COLLECTION), where('type', '==', carTypeValue));
   const modelsSnapshot = await getDocs(modelsQuery);
   const batch = writeBatch(db);
-  modelsSnapshot.forEach(async (modelDoc) => {
+  const modelImageDeletions: Promise<void>[] = [];
+  modelsSnapshot.forEach((modelDoc) => {
     const modelData = modelDoc.data() as CarModelOptionAdmin;
     if (modelData.publicId) {
-      await deleteImageFromCloudinary(modelData.publicId); // Await deletion for each model image
+      modelImageDeletions.push(deleteImageFromCloudinary(modelData.publicId));
     }
     batch.delete(modelDoc.ref);
   });
+  await Promise.all(modelImageDeletions); // Wait for all Cloudinary deletions for models
   await batch.commit();
 }
 
 // --- Car Models ---
 export async function getCarModelsAdmin(): Promise<CarModelOptionAdmin[]> {
-  const q = query(collection(db, CAR_MODELS_COLLECTION), orderBy('order', 'asc'));
+  const q = query(collection(db, CAR_MODELS_COLLECTION), orderBy('order', 'asc'), orderBy('type', 'asc'));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CarModelOptionAdmin));
 }
@@ -241,9 +246,10 @@ export async function getCarModelsAdmin(): Promise<CarModelOptionAdmin[]> {
 export async function addCarModelAdmin(
   data: Omit<CarModelOptionAdmin, 'id' | 'value' | 'imageUrl' | 'publicId'> & { imageUrlInput: File }
 ): Promise<void> {
-  const { secure_url, public_id } = await uploadImageToCloudinary(data.imageUrlInput, `car_models/${data.type || 'general'}`);
-  const value = slugify(data.label);
-  await addDoc(collection(db, CAR_MODELS_COLLECTION), { ...data, value, imageUrl: secure_url, publicId: public_id });
+  const { imageUrlInput, ...restOfData } = data; // Destructure imageUrlInput
+  const { secure_url, public_id } = await uploadImageToCloudinary(imageUrlInput, `car_models/${restOfData.type || 'general'}`);
+  const value = slugify(restOfData.label);
+  await addDoc(collection(db, CAR_MODELS_COLLECTION), { ...restOfData, value, imageUrl: secure_url, publicId: public_id });
 }
 
 export async function updateCarModelAdmin(
@@ -260,7 +266,8 @@ export async function updateCarModelAdmin(
     const uploadResult = await uploadImageToCloudinary(data.imageUrlInput, `car_models/${data.type || 'general'}`);
     newImageUrl = uploadResult.secure_url;
     newPublicId = uploadResult.public_id;
-  } else if (data.imageUrlInput === null && data.currentPublicId) {
+  } else if (data.imageUrlInput === null && typeof data.existingImageUrl !== 'undefined' && !data.existingImageUrl && data.currentPublicId) {
+     // This condition means imageUrlInput is null (cleared), and existingImageUrl is empty string, and there was a currentPublicId
      await deleteImageFromCloudinary(data.currentPublicId);
      newImageUrl = '';
      newPublicId = '';
@@ -276,8 +283,10 @@ export async function updateCarModelAdmin(
       updatePayload.value = slugify(updateData.label);
     }
   }
-  updatePayload.imageUrl = newImageUrl;
-  updatePayload.publicId = newPublicId;
+  if (newImageUrl !== data.currentImageUrl || newPublicId !== data.currentPublicId) {
+    updatePayload.imageUrl = newImageUrl;
+    updatePayload.publicId = newPublicId;
+  }
 
   await updateDoc(docRef, updatePayload);
 }
@@ -296,7 +305,7 @@ export async function deleteCarModelAdmin(id: string): Promise<void> {
 
 // --- For Booking Form (Client-side data fetching) ---
 
-export async function getCarTypesForBooking(): Promise<Omit<CarTypeOptionAdmin, 'order' | 'dataAiHint' | 'id' | 'publicId'>[]> {
+export async function getCarTypesForBooking(): Promise<Omit<CarTypeOptionAdmin, 'order' | 'id' | 'publicId'>[]> {
   const q = query(collection(db, CAR_TYPES_COLLECTION), orderBy('order', 'asc'));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(docSnapshot => { 
@@ -305,11 +314,11 @@ export async function getCarTypesForBooking(): Promise<Omit<CarTypeOptionAdmin, 
       value: data.value, 
       label: data.label,
       imageUrl: data.imageUrl,
-    } as Omit<CarTypeOptionAdmin, 'order' | 'dataAiHint'| 'id' | 'publicId'>;
+    } as Omit<CarTypeOptionAdmin, 'order' | 'id' | 'publicId'>;
   });
 }
 
-export async function getCarModelsForBooking(carTypeValue: string): Promise<Omit<CarModelOptionAdmin, 'order' | 'dataAiHint' | 'type'| 'id' | 'publicId'>[]> {
+export async function getCarModelsForBooking(carTypeValue: string): Promise<Omit<CarModelOptionAdmin, 'order' | 'type'| 'id' | 'publicId'>[]> {
   if (!carTypeValue) return [];
   const q = query(
     collection(db, CAR_MODELS_COLLECTION),
@@ -323,6 +332,6 @@ export async function getCarModelsForBooking(carTypeValue: string): Promise<Omit
       value: data.value, 
       label: data.label,
       imageUrl: data.imageUrl,
-    } as Omit<CarModelOptionAdmin, 'order' | 'dataAiHint' | 'type'| 'id' | 'publicId'>;
+    } as Omit<CarModelOptionAdmin, 'order' | 'type'| 'id' | 'publicId'>;
   });
 }
