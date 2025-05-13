@@ -31,7 +31,7 @@ export default async function Home() {
         </div>
         <BookingForm />
       </div>
-      <Link href="/admin" className="admin-subtle-button" aria-label="لوحة التحكم">
+      <Link href="/admin" className="admin-prominent-button" aria-label="لوحة التحكم">
         <Cog size={24} />
       </Link>
     </main>
