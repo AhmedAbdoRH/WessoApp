@@ -1,4 +1,3 @@
-
 // src/components/admin/CarModelManager.tsx
 'use client';
 
@@ -30,13 +29,12 @@ import {
 
 const carModelFormSchema = z.object({
   label: z.string().min(1, 'اسم الموديل (بالعربية) مطلوب').max(100, 'الاسم طويل جداً'),
-  imageUrlInput: z.any().optional(), // Changed from z.instanceof(FileList)
+  imageUrlInput: z.any().optional(), 
   existingImageUrl: z.string().url().optional().or(z.literal('')),
-  existingPublicId: z.string().optional().or(z.literal('')), // For Cloudinary public_id
+  existingPublicId: z.string().optional().or(z.literal('')), 
   type: z.string().min(1, 'يجب اختيار نوع السيارة'),
   order: z.coerce.number().min(0, 'الترتيب يجب أن يكون 0 أو أكبر'),
 }).refine(data => {
-  // FileList is a browser API, check for its existence before using instanceof
   const hasNewFile = typeof FileList !== 'undefined' && data.imageUrlInput instanceof FileList && data.imageUrlInput.length > 0;
   const hasExistingImage = !!data.existingImageUrl;
   return hasNewFile || hasExistingImage;
@@ -62,6 +60,8 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const validCarTypes = React.useMemo(() => allCarTypes.filter(type => type.value && type.value.trim() !== ''), [allCarTypes]);
+
 
   const { register, handleSubmit, reset, setValue, control, watch, formState: { errors, isDirty } } = useForm<CarModelFormData>({
     resolver: zodResolver(carModelFormSchema),
@@ -69,7 +69,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
       label: '',
       existingImageUrl: '',
       existingPublicId: '',
-      type: '',
+      type: validCarTypes[0]?.value || '', // Use first valid car type
       order: 0,
       imageUrlInput: undefined,
     },
@@ -81,7 +81,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
   const { ref: imageInputRegisterRef, ...imageInputProps } = register('imageUrlInput');
 
   useEffect(() => {
-    if (watchedImageUrlInput && watchedImageUrlInput.length > 0 && watchedImageUrlInput[0] instanceof File) {
+    if (watchedImageUrlInput && watchedImageUrlInput[0] instanceof File) {
       const file = watchedImageUrlInput[0];
       const previewUrl = URL.createObjectURL(file);
       setImagePreviewUrl(previewUrl);
@@ -104,7 +104,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
     setShowForm(true);
     setImagePreviewUrl(carModel.imageUrl || null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = ""; // Clear file input
+      fileInputRef.current.value = ""; 
     }
   };
   
@@ -125,7 +125,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
       imageUrlInput: undefined,
       existingImageUrl: '',
       existingPublicId: '',
-      type: allCarTypes[0]?.value || '',
+      type: validCarTypes[0]?.value || '', // Use first valid car type
       order: defaultOrder,
     });
     setEditingCarModel(null);
@@ -139,7 +139,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
   const onSubmit: SubmitHandler<CarModelFormData> = async (data) => {
     startTransition(async () => {
       try {
-        const imageFile = data.imageUrlInput && data.imageUrlInput.length > 0 && data.imageUrlInput[0] instanceof File ? data.imageUrlInput[0] : null;
+        const imageFile = data.imageUrlInput && data.imageUrlInput[0] instanceof File ? data.imageUrlInput[0] : null;
 
         if (editingCarModel) {
           if (!imageFile && !data.existingImageUrl) {
@@ -207,11 +207,11 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
             imageUrlInput: undefined,
             existingImageUrl: '',
             existingPublicId: '',
-            type: allCarTypes[0]?.value || '', 
+            type: validCarTypes[0]?.value || '', 
             order: defaultOrder 
         });
     }
-  }, [initialCarModels, allCarTypes, reset, editingCarModel, showForm]);
+  }, [initialCarModels, validCarTypes, reset, editingCarModel, showForm]);
 
 
   return (
@@ -225,23 +225,23 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
             imageUrlInput: undefined,
             existingImageUrl: '',
             existingPublicId: '',
-            type: allCarTypes[0]?.value || '',
+            type: validCarTypes[0]?.value || '', // Use first valid car type
             order: defaultOrder 
             });
           setImagePreviewUrl(null);
           if (fileInputRef.current) {
-            fileInputRef.current.value = ""; // Clear file input
+            fileInputRef.current.value = ""; 
           }
         }}  
         className="mb-4 bg-accent hover:bg-accent/90 text-accent-foreground"
-        disabled={allCarTypes.length === 0}
+        disabled={validCarTypes.length === 0}
         >
         <PlusCircle className="ml-2 h-4 w-4" /> إضافة موديل سيارة جديد
       </Button>
-      {allCarTypes.length === 0 && <p className="text-destructive">الرجاء إضافة أنواع سيارات أولاً قبل إضافة الموديلات.</p>}
+      {validCarTypes.length === 0 && <p className="text-destructive">الرجاء إضافة أنواع سيارات صالحة أولاً قبل إضافة الموديلات.</p>}
 
 
-      {showForm && allCarTypes.length > 0 && (
+      {showForm && validCarTypes.length > 0 && (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 admin-form p-4 glass-card mb-6">
           <h3 className="text-lg font-medium">{editingCarModel ? 'تعديل موديل السيارة' : 'إضافة موديل سيارة جديد'}</h3>
           <div>
@@ -299,7 +299,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
                     <SelectValue placeholder="اختر نوع السيارة" />
                   </SelectTrigger>
                   <SelectContent>
-                    {allCarTypes.map(type => (
+                    {validCarTypes.map(type => (
                       <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
                     ))}
                   </SelectContent>
@@ -375,3 +375,4 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
     </div>
   );
 }
+
