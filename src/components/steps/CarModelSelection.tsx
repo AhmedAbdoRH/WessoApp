@@ -11,57 +11,86 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { BookingFormData } from '../BookingForm';
 import type { CarModelOptionAdmin, CarTypeOptionAdmin } from '@/types/admin';
-import { getCarModelsForBooking } from '@/services/adminService'; // To fetch models client-side or pass as prop
+import { getCarModelsForBooking } from '@/services/adminService';
 
-// Helper to get Arabic type name (can be moved to a utils file if used elsewhere)
 export const getArabicCarTypeName = (
   typeValue: string,
   carTypesForName: Pick<CarTypeOptionAdmin, 'value' | 'label'>[]
 ): string => {
     const foundType = carTypesForName.find(ct => ct.value === typeValue);
-    return foundType?.label || typeValue; // Fallback to value if not found
+    return foundType?.label || typeValue;
 }
 
 interface CarModelSelectionProps {
   errors?: any;
   onNext?: () => Promise<void> | void;
-  // Car types are needed to display the name if no models are available
   allCarTypes: Pick<CarTypeOptionAdmin, 'value' | 'label'>[];
 }
 
 export const CarModelSelection: FC<CarModelSelectionProps> = ({ errors, onNext, allCarTypes }) => {
-  const { register, watch, setValue, formState } = useFormContext<BookingFormData>();
+  const { register, watch, setValue, getValues, formState } = useFormContext<BookingFormData>();
   const selectedCarType = watch('carType');
   const selectedCarModel = watch('carModel');
   const [availableModels, setAvailableModels] = useState<Omit<CarModelOptionAdmin, 'order' | 'dataAiHint' | 'type'>[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Effect to fetch car models when selectedCarType changes
   useEffect(() => {
     if (selectedCarType) {
       setIsLoading(true);
+      // Clear previous model selection when type changes if it's not a default for the new type
+      const currentModel = getValues('carModel');
+      if (currentModel && !currentModel.startsWith(`${selectedCarType}-default`)) {
+          // Check if current model is part of the new list of models. If not, or if no models yet, consider resetting.
+          // This logic can be complex; for now, we'll primarily let the default model effect handle it.
+      }
+
       getCarModelsForBooking(selectedCarType)
         .then(models => {
           setAvailableModels(models);
-          // If only one model or no specific models, and a default was previously set, clear it if type changes
-          // This logic might need adjustment based on how defaults are handled
-          const currentModel = watch('carModel');
-          if (models.length > 0 && !models.find(m => m.value === currentModel)) {
-             // setValue('carModel', '', { shouldValidate: false }); // Clear if current model not in new list
-          }
         })
         .catch(console.error)
         .finally(() => setIsLoading(false));
     } else {
       setAvailableModels([]);
+       // If car type is deselected, clear car model as well
+      if (getValues('carModel')) {
+        setValue('carModel', '', { shouldValidate: false, shouldDirty: true });
+      }
     }
-  }, [selectedCarType, setValue, watch]);
+  }, [selectedCarType, setValue, getValues]);
+
+  // Effect to handle default model selection and auto-advance
+  // This hook is at the top level and runs on every relevant state change.
+  useEffect(() => {
+    // Condition to set default model is checked inside the effect
+    if (selectedCarType && !isLoading && availableModels.length === 0) {
+      const defaultModelValue = `${selectedCarType}-default`;
+      const currentModelInForm = getValues('carModel');
+
+      // Set the default value if it's not already set or if it's different
+      if (currentModelInForm !== defaultModelValue) {
+        setValue('carModel', defaultModelValue, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+      }
+      
+      // Auto-advance if onNext is available and default model is appropriately set
+      if (onNext && getValues('carModel') === defaultModelValue) {
+        const tryAutoAdvance = async () => {
+          // Ensure RHF processes update before advancing
+          await new Promise(resolve => setTimeout(resolve, 50)); 
+          onNext();
+        };
+        tryAutoAdvance();
+      }
+    }
+  }, [selectedCarType, isLoading, availableModels, setValue, getValues, onNext]);
 
 
   const handleSelect = async (value: string) => {
     setValue('carModel', value, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
     if (onNext) {
       await new Promise(resolve => setTimeout(resolve, 50));
-      await onNext();
+      onNext();
     }
   };
 
@@ -83,25 +112,10 @@ export const CarModelSelection: FC<CarModelSelectionProps> = ({ errors, onNext, 
     );
   }
   
-  // Handle case where no specific models are defined for a type
-  if (availableModels.length === 0 && selectedCarType) {
-    const defaultModelValue = `${selectedCarType}-default`; // Create a default model identifier
+  // UI for when no specific models are available (default model is handled by useEffect)
+  if (availableModels.length === 0 && selectedCarType) { // Check selectedCarType again for safety
+    const defaultModelValue = `${selectedCarType}-default`; 
     const arabicCarTypeName = getArabicCarTypeName(selectedCarType, allCarTypes);
-
-     // Effect to set default model and attempt auto-advance
-     React.useEffect(() => {
-       setValue('carModel', defaultModelValue, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-        const tryAutoAdvance = async () => {
-            if (onNext) {
-                await new Promise(resolve => setTimeout(resolve, 50));
-                await onNext();
-            }
-        }
-        // Only auto-advance if this effect sets the value
-        if (watch('carModel') === defaultModelValue) {
-            tryAutoAdvance();
-        }
-     }, [selectedCarType, setValue, onNext, defaultModelValue, watch]);
 
     return (
        <div className="space-y-4 text-center">
@@ -116,6 +130,7 @@ export const CarModelSelection: FC<CarModelSelectionProps> = ({ errors, onNext, 
      );
   }
 
+  // UI for selecting from available models
   return (
     <div className="space-y-6">
       <Label className="text-xl font-semibold text-foreground block mb-4">اختر موديل السيارة</Label>
