@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { FC } from 'react';
@@ -186,14 +187,7 @@ const BookingForm: FC = () => {
     }
   };
    
-   const getGoogleMapsLink = (coords?: { latitude?: number; longitude?: number }): string | null => {
-     if (coords?.latitude && coords?.longitude) {
-       return `https://www.google.com/maps?q=${coords.latitude},${coords.longitude}`;
-     }
-     return null;
-   };
-   
-    const getGoogleMapsLinkFromAddress = (address?: string): string | null => {
+   const getGoogleMapsLinkFromAddress = (address?: string): string | null => {
         if (address) {
         return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
         }
@@ -226,7 +220,6 @@ const BookingForm: FC = () => {
 
     // Prepare data for both Firestore and WhatsApp message
     let carTypeLabelValue = data.carType;
-    // Assuming `carTypes` is the state variable holding fetched car types
     const carTypeFromState = carTypes.find(ct => ct.value === data.carType);
     if (carTypeFromState) {
         carTypeLabelValue = carTypeFromState.label;
@@ -245,20 +238,9 @@ const BookingForm: FC = () => {
             }
         } catch (e) {
             console.error("Failed to fetch car model details for message, using ID as fallback", e);
-            // carModelLabelValue remains data.carModel (ID or slug)
         }
     }
-
-    let appNameValue = 'ClearRide'; // Default
-    try {
-        const appConfig = await getAppConfig();
-        appNameValue = appConfig?.appName || 'ClearRide';
-    } catch (e) {
-        console.error("Failed to fetch appName for message, using default", e);
-    }
-
-
-     // Attempt to save to Firestore
+    
      try {
         const docData = {
           ...data,
@@ -283,30 +265,29 @@ const BookingForm: FC = () => {
        });
      }
      
-    // Proceed to send WhatsApp message
-    const pickupMapLink = getGoogleMapsLink(data.pickupLocation.coordinates) || getGoogleMapsLinkFromAddress(data.pickupLocation.address);
-    const dropoffMapLink = getGoogleMapsLink(data.dropoffLocation.coordinates) || getGoogleMapsLinkFromAddress(data.dropoffLocation.address);
+    const pickupMapLink = getGoogleMapsLinkFromAddress(data.pickupLocation.address);
+    const dropoffMapLink = getGoogleMapsLinkFromAddress(data.dropoffLocation.address);
     
     const message = `
-*طلب حجز جديد من ${appNameValue}:*
------------------------------
-*نوع السيارة:* ${carTypeLabelValue}
-*موديل السيارة:* ${carModelLabelValue} 
-*عدد الركاب:* ${data.passengers}
-*عدد الحقائب:* ${data.bags}
------------------------------
-*مكان الانطلاق:* ${data.pickupLocation.address}${pickupMapLink ? `\n📍 رابط الخريطة: ${pickupMapLink}` : ''}
-
-*وجهة الوصول:* ${data.dropoffLocation.address}${dropoffMapLink ? `\n🏁 رابط الخريطة: ${dropoffMapLink}` : ''}
------------------------------
-*اسم العميل:* ${data.firstName}
-*رقم هاتف العميل:* ${data.phoneNumber}
------------------------------
-يرجى تأكيد هذه التفاصيل.
-    `.trim().replace(/\n\s+/g, '\n'); 
+طلب حجز جديد من Wesso.App
+━━━━━━━━━━━━━━━━━━
+💠 نوع الرحلة: ${carTypeLabelValue}
+🚗 موديل السيارة: ${carModelLabelValue}
+🧍‍♂️ عدد الركاب: ${data.passengers}
+🧳 عدد الحقائب: ${data.bags}
+━━━━━━━━━━━━━━━━━━
+📍 مكان الانطلاق: ${data.pickupLocation.address}
+${pickupMapLink ? `[رابط الخريطة](${pickupMapLink})` : ''}
+━━━━━━━━━━━━━━━━━━
+🏁 وجهة الوصول: ${data.dropoffLocation.address}
+${dropoffMapLink ? `[رابط الخريطة](${dropoffMapLink})` : ''}
+━━━━━━━━━━━━━━━━━━
+👤 اسم العميل: ${data.firstName}
+📞 رقم هاتف العميل: ${data.phoneNumber}
+    `.trim().replace(/\n\s+/g, '\n'); // Trim and remove leading spaces from newlines
 
     const encodedMessage = encodeURIComponent(message);
-    const targetPhoneNumber = "201100434503"; // User requested phone number
+    const targetPhoneNumber = "201100434503"; 
     const whatsappUrl = `https://wa.me/${targetPhoneNumber}?text=${encodedMessage}`;
     
     try {
@@ -315,7 +296,6 @@ const BookingForm: FC = () => {
            title: "جاري فتح واتساب...",
            description: "إذا لم يفتح واتساب تلقائيًا، يرجى التحقق من إعدادات المتصفح.",
        });
-       // methods.reset(); setCurrentStep(0); // Optionally reset form
     } catch (waError) {
        console.error("Error opening WhatsApp:", waError);
        toast({
@@ -407,3 +387,4 @@ const BookingForm: FC = () => {
 export default BookingForm;
 
       
+
