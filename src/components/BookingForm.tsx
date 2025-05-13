@@ -8,6 +8,8 @@ import { useForm, FormProvider, type SubmitHandler } from "react-hook-form";
 import * as z from "zod";
 import { motion } from "framer-motion";
 import { ArrowLeft } from 'lucide-react'; 
+import { getFirestore, collection, addDoc } from "firebase/firestore"; // Firebase imports
+import { db } from "@/lib/firebase"; // Firebase db instance
 
 import { CarTypeSelection } from "./steps/CarTypeSelection";
 import { CarModelSelection } from "./steps/CarModelSelection";
@@ -32,8 +34,8 @@ const locationDetailSchema = z.object({
 const bookingSchema = z.object({
   carType: z.string().min(1, "الرجاء اختيار نوع السيارة"),
   carModel: z.string().min(1,"الرجاء اختيار موديل السيارة"),
-  passengers: z.coerce.number().min(1, "راكب واحد على الأقل").max(4, "4 ركاب كحد أقصى"), // Updated max to 4
-  bags: z.coerce.number().min(0, "لا يمكن أن يكون عدد الحقائب سالباً").max(3, "3 حقائب كحد أقصى"), // Updated max to 3
+  passengers: z.coerce.number().min(1, "راكب واحد على الأقل").max(4, "4 ركاب كحد أقصى"),
+  bags: z.coerce.number().min(0, "لا يمكن أن يكون عدد الحقائب سالباً").max(3, "3 حقائب كحد أقصى"),
   pickupLocation: locationDetailSchema,
   dropoffLocation: locationDetailSchema,
   firstName: z.string().min(2, "الرجاء إدخال الاسم الأول"), 
@@ -69,8 +71,8 @@ const BookingForm: FC = () => {
     defaultValues: {
       carType: '',
       carModel: '',
-      passengers: undefined as number | undefined, // Remove pre-selection
-      bags: undefined as number | undefined,       // Remove pre-selection
+      passengers: undefined as number | undefined,
+      bags: undefined as number | undefined,      
       pickupLocation: { address: '', coordinates: undefined },
       dropoffLocation: { address: '', coordinates: undefined },
       firstName: '', 
@@ -176,7 +178,28 @@ const BookingForm: FC = () => {
 
      console.log("Booking Submitted:", data);
      try {
-       
+        // Save to Firestore
+        try {
+            const docRef = await addDoc(collection(db, "bookings"), {
+                ...data,
+                createdAt: new Date().toISOString(), // Add a timestamp
+            });
+            console.log("Document written with ID: ", docRef.id);
+            toast({
+                title: "تم الحفظ بنجاح",
+                description: "تم حفظ طلب الحجز الخاص بك في قاعدة البيانات.",
+            });
+        } catch (e) {
+            console.error("Error adding document: ", e);
+            toast({
+                title: "خطأ في الحفظ",
+                description: "حدث خطأ أثناء حفظ طلبك في قاعدة البيانات. يرجى المحاولة مرة أخرى.",
+                variant: "destructive",
+            });
+            // Optionally, you might want to stop here if DB save is critical
+            // return;
+        }
+
        const pickupMapLink = getGoogleMapsLink(data.pickupLocation.coordinates) || getGoogleMapsLinkFromAddress(data.pickupLocation.address);
        const dropoffMapLink = getGoogleMapsLink(data.dropoffLocation.coordinates) || getGoogleMapsLinkFromAddress(data.dropoffLocation.address);
 
@@ -204,7 +227,7 @@ const BookingForm: FC = () => {
        const whatsappUrl = `https://wa.me/${targetPhoneNumber}?text=${encodedMessage}`;
 
        toast({
-         title: "الحجز جاهز!",
+         title: "الحجز جاهز للإرسال!",
          description: "جاري إعادة توجيهك إلى واتساب لإرسال طلبك...",
        });
 
@@ -212,10 +235,10 @@ const BookingForm: FC = () => {
        window.open(whatsappUrl, '_blank');
 
      } catch (error) {
-       console.error("Error preparing WhatsApp redirect:", error);
+       console.error("Error preparing WhatsApp redirect or saving to DB:", error);
        toast({
          title: "خطأ في الإرسال",
-         description: "تعذر تحضير طلب الحجز الخاص بك لواتساب. يرجى المحاولة مرة أخرى.",
+         description: "تعذر تحضير طلب الحجز الخاص بك. يرجى المحاولة مرة أخرى.",
          variant: "destructive",
        });
      }
@@ -239,32 +262,35 @@ const BookingForm: FC = () => {
 
           <motion.div
             key={currentStep} 
-            initial={{ opacity: 0, x: currentStep > 0 ? -50 : 50 }}
+            initial={{ opacity: 0, x: currentStep > 0 ? 50 : -50 }} // RTL adjusted: next comes from left, previous from right
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 50 }}
+            exit={{ opacity: 0, x: currentStep > 0 ? -50 : 50 }} // RTL adjusted
             transition={{ duration: 0.3, ease: "easeInOut" }}
           >
              <CurrentComponent
                 errors={errors} 
                 {...(shouldAutoAdvance && { onNext: handleNext })}
                 {...steps[currentStep].props}
+                autoFocus={['firstName', 'phoneNumber', 'location'].includes(steps[currentStep].id) && steps[currentStep].id !== 'location'}
              />
           </motion.div>
 
 
         <div className="flex justify-between items-center mt-8 pt-4 border-t border-white/20 dark:border-black/20 relative">
+           {/* Previous button on the right for RTL */}
            <Button
              type="button"
              onClick={handlePrevious}
              disabled={currentStep === 0}
-             className="glass-button disabled:opacity-50 disabled:cursor-not-allowed absolute left-0"
+             className="glass-button disabled:opacity-50 disabled:cursor-not-allowed absolute right-0" 
              aria-label="الخطوة السابقة"
            >
-             <ArrowLeft className="h-5 w-5" />
+             <ArrowLeft className="h-5 w-5 transform scale-x-[-1]" /> {/* Icon visually points left for "previous" in RTL */}
            </Button>
 
            <div className="flex-grow"></div> {/* Spacer */}
 
+            {/* Next/Submit button in the center */}
            <div className="flex justify-center flex-grow">
              {currentStep === steps.length - 1 ? (
                <Button
@@ -281,15 +307,17 @@ const BookingForm: FC = () => {
                     type="button"
                     onClick={handleNext}
                     className="glass-button bg-accent/80 hover:bg-accent text-accent-foreground" 
-                    aria-label={isPhoneNumberStep ? "التأكيد والانتهاء والانتقال إلى ملخص الطلب" : "الخطوة التالية"}
+                    aria-label={isPhoneNumberStep ? "التأكيد والمتابعة لملخص الطلب" : "الخطوة التالية"}
                   >
-                    {isPhoneNumberStep ? "التأكيد والانتهاء" : "التالي"}
+                    {isPhoneNumberStep ? "التأكيد والمتابعة" : "التالي"}
                   </Button>
                 )
              )}
            </div>
 
            <div className="flex-grow"></div> {/* Spacer */}
+           {/* Placeholder for the left side to balance, or keep empty if previous is on right */}
+            <div className="w-10 h-10"></div> {/* Adjust width as needed to balance the previous button */}
         </div>
       </form>
     </FormProvider>
