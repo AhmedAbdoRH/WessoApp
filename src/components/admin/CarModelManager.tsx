@@ -40,18 +40,18 @@ type CarModelFormData = z.infer<typeof carModelSchema>;
 
 interface CarModelManagerProps {
   initialCarModels: CarModelOptionAdmin[];
-  allCarTypes: Pick&lt;CarTypeOptionAdmin, 'value' | 'label'&gt;[]; // To populate dropdown
+  allCarTypes: Pick<CarTypeOptionAdmin, 'value' | 'label'>[]; // To populate dropdown
 }
 
 export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManagerProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [editingCarModel, setEditingCarModel] = useState&lt;CarModelOptionAdmin | null&gt;(null);
-  const [carModels, setCarModels] = useState&lt;CarModelOptionAdmin[]&gt;(initialCarModels);
+  const [editingCarModel, setEditingCarModel] = useState<CarModelOptionAdmin | null>(null);
+  const [carModels, setCarModels] = useState<CarModelOptionAdmin[]>(initialCarModels);
   const [showForm, setShowForm] = useState(false);
 
-  const { register, handleSubmit, reset, setValue, control, formState: { errors, isDirty } } = useForm&lt;CarModelFormData&gt;({
+  const { register, handleSubmit, reset, setValue, control, formState: { errors, isDirty } } = useForm<CarModelFormData>({
     resolver: zodResolver(carModelSchema),
     defaultValues: {
       value: '',
@@ -66,7 +66,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
   useEffect(() => {
     setCarModels(initialCarModels);
     if (!editingCarModel && !showForm) {
-        const defaultOrder = initialCarModels.length > 0 ? Math.max(...initialCarModels.map(cm =&gt; cm.order)) + 1 : 0;
+        const defaultOrder = initialCarModels.length > 0 ? Math.max(...initialCarModels.map(cm => cm.order)) + 1 : 0;
         reset({ order: defaultOrder, type: allCarTypes[0]?.value || '' });
     }
   }, [initialCarModels, allCarTypes, reset, editingCarModel, showForm]);
@@ -84,7 +84,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
   };
 
   const resetFormAndState = () => {
-    const defaultOrder = carModels.length > 0 ? Math.max(...carModels.map(cm =&gt; cm.order)) + 1 : 0;
+    const defaultOrder = carModels.length > 0 ? Math.max(...carModels.map(cm => cm.order)) + 1 : 0;
     reset({
       value: '',
       label: '',
@@ -97,7 +97,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
     setShowForm(false);
   };
 
-  const onSubmit: SubmitHandler&lt;CarModelFormData&gt; = async (data) => {
+  const onSubmit: SubmitHandler<CarModelFormData> = async (data) => {
     startTransition(async () => {
       try {
         if (editingCarModel) {
@@ -132,7 +132,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
       try {
         await deleteCarModelAdmin(id);
         toast({ title: 'تم الحذف', description: `تم حذف موديل السيارة: ${label}` });
-        setCarModels(prev =&gt; prev.filter(cm =&gt; cm.id !== id)); // Optimistic update
+        setCarModels(prev => prev.filter(cm => cm.id !== id)); // Optimistic update
         router.refresh();
       } catch (error) {
         console.error('Failed to delete car model:', error);
@@ -146,124 +146,124 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
   };
 
   return (
-    &lt;div className="space-y-6"&gt;
-      &lt;Button onClick={() =&gt; { 
+    <div className="space-y-6">
+      <Button onClick={() => { 
           setShowForm(true); 
           setEditingCarModel(null); 
-          const defaultOrder = carModels.length > 0 ? Math.max(...carModels.map(cm =&gt; cm.order)) + 1 : 0;
+          const defaultOrder = carModels.length > 0 ? Math.max(...carModels.map(cm => cm.order)) + 1 : 0;
           reset({ order: defaultOrder, type: allCarTypes[0]?.value || '' });
         }}  
         className="mb-4 bg-accent hover:bg-accent/90 text-accent-foreground"
         disabled={allCarTypes.length === 0}
-        &gt;
-        &lt;PlusCircle className="ml-2 h-4 w-4" /&gt; إضافة موديل سيارة جديد
-      &lt;/Button&gt;
-      {allCarTypes.length === 0 && &lt;p className="text-destructive"&gt;الرجاء إضافة أنواع سيارات أولاً قبل إضافة الموديلات.&lt;/p&gt;}
+        >
+        <PlusCircle className="ml-2 h-4 w-4" /> إضافة موديل سيارة جديد
+      </Button>
+      {allCarTypes.length === 0 && <p className="text-destructive">الرجاء إضافة أنواع سيارات أولاً قبل إضافة الموديلات.</p>}
 
 
       {showForm && allCarTypes.length > 0 && (
-        &lt;form onSubmit={handleSubmit(onSubmit)} className="space-y-4 admin-form p-4 glass-card mb-6"&gt;
-          &lt;h3 className="text-lg font-medium"&gt;{editingCarModel ? 'تعديل موديل السيارة' : 'إضافة موديل سيارة جديد'}&lt;/h3&gt;
-          &lt;div&gt;
-            &lt;Label htmlFor="cm-value"&gt;المعرّف (ID - إنجليزي، مثال: toyota-camry)&lt;/Label&gt;
-            &lt;Input id="cm-value" {...register('value')} disabled={!!editingCarModel} /&gt;
-            {errors.value && &lt;p className="text-sm text-destructive mt-1"&gt;{errors.value.message}&lt;/p&gt;}
-            {!!editingCarModel && &lt;p className="text-xs text-muted-foreground mt-1"&gt;لا يمكن تغيير المعرّف بعد الإنشاء.&lt;/p&gt;}
-          &lt;/div&gt;
-          &lt;div&gt;
-            &lt;Label htmlFor="cm-label"&gt;الاسم (بالعربية)&lt;/Label&gt;
-            &lt;Input id="cm-label" {...register('label')} /&gt;
-            {errors.label && &lt;p className="text-sm text-destructive mt-1"&gt;{errors.label.message}&lt;/p&gt;}
-          &lt;/div&gt;
-          &lt;div&gt;
-            &lt;Label htmlFor="cm-imageUrl"&gt;رابط الصورة&lt;/Label&gt;
-            &lt;Input id="cm-imageUrl" type="url" {...register('imageUrl')} /&gt;
-            {errors.imageUrl && &lt;p className="text-sm text-destructive mt-1"&gt;{errors.imageUrl.message}&lt;/p&gt;}
-          &lt;/div&gt;
-          &lt;div&gt;
-            &lt;Label htmlFor="cm-type"&gt;نوع السيارة&lt;/Label&gt;
-            &lt;Controller
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 admin-form p-4 glass-card mb-6">
+          <h3 className="text-lg font-medium">{editingCarModel ? 'تعديل موديل السيارة' : 'إضافة موديل سيارة جديد'}</h3>
+          <div>
+            <Label htmlFor="cm-value">المعرّف (ID - إنجليزي، مثال: toyota-camry)</Label>
+            <Input id="cm-value" {...register('value')} disabled={!!editingCarModel} />
+            {errors.value && <p className="text-sm text-destructive mt-1">{errors.value.message}</p>}
+            {!!editingCarModel && <p className="text-xs text-muted-foreground mt-1">لا يمكن تغيير المعرّف بعد الإنشاء.</p>}
+          </div>
+          <div>
+            <Label htmlFor="cm-label">الاسم (بالعربية)</Label>
+            <Input id="cm-label" {...register('label')} />
+            {errors.label && <p className="text-sm text-destructive mt-1">{errors.label.message}</p>}
+          </div>
+          <div>
+            <Label htmlFor="cm-imageUrl">رابط الصورة</Label>
+            <Input id="cm-imageUrl" type="url" {...register('imageUrl')} />
+            {errors.imageUrl && <p className="text-sm text-destructive mt-1">{errors.imageUrl.message}</p>}
+          </div>
+          <div>
+            <Label htmlFor="cm-type">نوع السيارة</Label>
+            <Controller
               name="type"
               control={control}
-              render={({ field }) =&gt; (
-                &lt;Select onValueChange={field.onChange} defaultValue={field.value} value={field.value} dir="rtl"&gt;
-                  &lt;SelectTrigger id="cm-type"&gt;
-                    &lt;SelectValue placeholder="اختر نوع السيارة" /&gt;
-                  &lt;/SelectTrigger&gt;
-                  &lt;SelectContent&gt;
-                    {allCarTypes.map(type =&gt; (
-                      &lt;SelectItem key={type.value} value={type.value}&gt;{type.label}&lt;/SelectItem&gt;
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value} dir="rtl">
+                  <SelectTrigger id="cm-type">
+                    <SelectValue placeholder="اختر نوع السيارة" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allCarTypes.map(type => (
+                      <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
                     ))}
-                  &lt;/SelectContent&gt;
-                &lt;/Select&gt;
+                  </SelectContent>
+                </Select>
               )}
-            /&gt;
-            {errors.type && &lt;p className="text-sm text-destructive mt-1"&gt;{errors.type.message}&lt;/p&gt;}
-          &lt;/div&gt;
-          &lt;div&gt;
-            &lt;Label htmlFor="cm-dataAiHint"&gt;وصف للصورة (لـ AI - اختياري)&lt;/Label&gt;
-            &lt;Input id="cm-dataAiHint" {...register('dataAiHint')} /&gt;
-          &lt;/div&gt;
-          &lt;div&gt;
-            &lt;Label htmlFor="cm-order"&gt;ترتيب العرض&lt;/Label&gt;
-            &lt;Input id="cm-order" type="number" {...register('order')} /&gt;
-            {errors.order && &lt;p className="text-sm text-destructive mt-1"&gt;{errors.order.message}&lt;/p&gt;}
-          &lt;/div&gt;
-          &lt;div className="flex gap-2"&gt;
-            &lt;Button type="submit" disabled={isPending || !isDirty} className="bg-accent hover:bg-accent/90 text-accent-foreground"&gt;
+            />
+            {errors.type && <p className="text-sm text-destructive mt-1">{errors.type.message}</p>}
+          </div>
+          <div>
+            <Label htmlFor="cm-dataAiHint">وصف للصورة (لـ AI - اختياري)</Label>
+            <Input id="cm-dataAiHint" {...register('dataAiHint')} />
+          </div>
+          <div>
+            <Label htmlFor="cm-order">ترتيب العرض</Label>
+            <Input id="cm-order" type="number" {...register('order')} />
+            {errors.order && <p className="text-sm text-destructive mt-1">{errors.order.message}</p>}
+          </div>
+          <div className="flex gap-2">
+            <Button type="submit" disabled={isPending || !isDirty} className="bg-accent hover:bg-accent/90 text-accent-foreground">
               {isPending ? 'جاري الحفظ...' : (editingCarModel ? 'حفظ التعديلات' : 'إضافة الموديل')}
-            &lt;/Button&gt;
-            &lt;Button type="button" variant="outline" onClick={resetFormAndState} disabled={isPending}&gt;
+            </Button>
+            <Button type="button" variant="outline" onClick={resetFormAndState} disabled={isPending}>
               إلغاء
-            &lt;/Button&gt;
-          &lt;/div&gt;
-        &lt;/form&gt;
+            </Button>
+          </div>
+        </form>
       )}
 
-      &lt;div className="admin-item-list"&gt;
-        {carModels.length === 0 && !showForm && &lt;p&gt;لا توجد موديلات سيارات معرفة حالياً.&lt;/p&gt;}
-        {carModels.map((carModel) =&gt; (
-          &lt;div key={carModel.id} className="admin-item"&gt;
-             &lt;div className="flex items-center gap-4"&gt;
-              &lt;Image src={carModel.imageUrl} alt={carModel.label} width={60} height={40} className="rounded object-cover" data-ai-hint={carModel.dataAiHint || "car model image"}/&gt;
-              &lt;div&gt;
-                &lt;p className="font-semibold"&gt;{carModel.label} &lt;span className="text-xs text-muted-foreground"&gt;({carModel.value})&lt;/span&gt;&lt;/p&gt;
-                &lt;p className="text-xs text-muted-foreground"&gt;النوع: {allCarTypes.find(t =&gt; t.value === carModel.type)?.label || carModel.type} | الترتيب: {carModel.order}&lt;/p&gt;
-              &lt;/div&gt;
-            &lt;/div&gt;
-            &lt;div className="admin-item-actions"&gt;
-              &lt;Button variant="ghost" size="sm" onClick={() =&gt; handleEdit(carModel)} aria-label="تعديل"&gt;
-                &lt;Edit className="h-4 w-4" /&gt;
-              &lt;/Button&gt;
-               &lt;AlertDialog&gt;
-                &lt;AlertDialogTrigger asChild&gt;
-                  &lt;Button variant="ghost" size="sm" className="text-destructive" aria-label="حذف"&gt;
-                    &lt;Trash2 className="h-4 w-4" /&gt;
-                  &lt;/Button&gt;
-                &lt;/AlertDialogTrigger&gt;
-                &lt;AlertDialogContent&gt;
-                  &lt;AlertDialogHeader&gt;
-                    &lt;AlertDialogTitle&gt;هل أنت متأكد?&lt;/AlertDialogTitle&gt;
-                    &lt;AlertDialogDescription&gt;
+      <div className="admin-item-list">
+        {carModels.length === 0 && !showForm && <p>لا توجد موديلات سيارات معرفة حالياً.</p>}
+        {carModels.map((carModel) => (
+          <div key={carModel.id} className="admin-item">
+             <div className="flex items-center gap-4">
+              <Image src={carModel.imageUrl} alt={carModel.label} width={60} height={40} className="rounded object-cover" data-ai-hint={carModel.dataAiHint || "car model image"}/>
+              <div>
+                <p className="font-semibold">{carModel.label} <span className="text-xs text-muted-foreground">({carModel.value})</span></p>
+                <p className="text-xs text-muted-foreground">النوع: {allCarTypes.find(t => t.value === carModel.type)?.label || carModel.type} | الترتيب: {carModel.order}</p>
+              </div>
+            </div>
+            <div className="admin-item-actions">
+              <Button variant="ghost" size="sm" onClick={() => handleEdit(carModel)} aria-label="تعديل">
+                <Edit className="h-4 w-4" />
+              </Button>
+               <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="text-destructive" aria-label="حذف">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>هل أنت متأكد?</AlertDialogTitle>
+                    <AlertDialogDescription>
                       سيتم حذف موديل السيارة "{carModel.label}". لا يمكن التراجع عن هذا الإجراء.
-                    &lt;/AlertDialogDescription&gt;
-                  &lt;/AlertDialogHeader&gt;
-                  &lt;AlertDialogFooter&gt;
-                    &lt;AlertDialogCancel&gt;إلغاء&lt;/AlertDialogCancel&gt;
-                    &lt;AlertDialogAction
-                      onClick={() =&gt; handleDelete(carModel.id!, carModel.label)}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => handleDelete(carModel.id!, carModel.label)}
                       disabled={isPending}
                        className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-                    &gt;
+                    >
                        {isPending ? 'جاري الحذف...' : 'تأكيد الحذف'}
-                    &lt;/AlertDialogAction&gt;
-                  &lt;/AlertDialogFooter&gt;
-                &lt;/AlertDialogContent&gt;
-              &lt;/AlertDialog&gt;
-            &lt;/div&gt;
-          &lt;/div&gt;
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </div>
         ))}
-      &lt;/div&gt;
-    &lt;/div&gt;
+      </div>
+    </div>
   );
 }
