@@ -102,12 +102,12 @@ const BookingForm: FC = () => {
       }
     }
     fetchInitialData();
-  }, [toast]); // Added toast to dependency array
+  }, [toast]); 
   
   // --- Memoization Hooks ---
   const steps: StepDefinition[] = useMemo(() => [
     { id: 'carType', component: CarTypeSelection, validationFields: ['carType'], autoAdvance: true, props: { carTypes: carTypes } },
-    { id: 'carModel', component: CarModelSelection, validationFields: ['carModel'], autoAdvance: true, props: { allCarTypes: carTypes } },
+    { id: 'carModel', component: CarModelSelection, validationFields: ['carModel'], autoAdvance: false, props: { allCarTypes: carTypes } },
     { id: 'passengers', component: PassengerSelection, validationFields: ['passengers'], autoAdvance: true, props: { selectionType: 'passengers' } },
     { id: 'bags', component: PassengerSelection, validationFields: ['bags'], autoAdvance: true, props: { selectionType: 'bags' } },
     { id: 'location', component: LocationSelection, validationFields: ['pickupLocation.address', 'pickupLocation.coordinates', 'dropoffLocation.address', 'dropoffLocation.coordinates'], props: { autoFocus: true } },
@@ -133,6 +133,8 @@ const BookingForm: FC = () => {
           </div>
       );
   }
+  const CurrentComponent = steps[currentStep].component;
+  const shouldAutoAdvance = steps[currentStep].autoAdvance && currentStep < steps.length - 1;
 
   // --- Event Handlers ---
   const handleNext = async () => {
@@ -239,7 +241,7 @@ const BookingForm: FC = () => {
         const docData = {
           ...data,
           carTypeLabel, 
-          carModelLabel, // Store resolved car model label
+          carModelLabel, 
           createdAt: new Date().toISOString(),
         };
 
@@ -288,8 +290,6 @@ const BookingForm: FC = () => {
      }
   };
   
-  const CurrentComponent = steps[currentStep].component;
-  const shouldAutoAdvance = steps[currentStep].autoAdvance && currentStep < steps.length - 1;
   const isPhoneNumberStep = steps[currentStep]?.id === 'phoneNumber';
   const isSummaryStep = currentStep === steps.length - 1;
   
