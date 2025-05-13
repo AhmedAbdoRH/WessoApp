@@ -5,10 +5,10 @@ import React, { useState, useTransition, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import type { CustomerContactAdmin } from '@/types/admin';
-import { deletePhoneNumberAdmin, getPhoneNumbersAdmin } from '@/services/adminService'; // Server Actions
+import { deletePhoneNumberAdmin, getPhoneNumbersAdmin } from '@/services/adminService'; 
 import { useRouter } from 'next/navigation';
-import { Trash2, RefreshCw, Download } from 'lucide-react'; // Added Download icon
-import { format } from 'date-fns'; // For CSV date formatting
+import { Trash2, RefreshCw, Download } from 'lucide-react'; 
+import { format } from 'date-fns'; 
 import {
   AlertDialog,
   AlertDialogAction,
@@ -80,13 +80,13 @@ export function PhoneNumberManager({ initialPhoneNumbers }: PhoneNumberManagerPr
     const csvRows = phoneNumbers.map(entry => [
       entry.firstName,
       entry.phoneNumber,
-      format(new Date(entry.createdAt), "yyyy-MM-dd HH:mm:ss") // Format date
+      format(new Date(entry.createdAt), "yyyy-MM-dd HH:mm:ss") 
     ]);
 
-    let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // \uFEFF for BOM to support Arabic in Excel
+    let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
     csvContent += csvHeaders.join(",") + "\r\n";
     csvRows.forEach(rowArray => {
-      const row = rowArray.map(field => `"${String(field).replace(/"/g, '""')}"`).join(","); // Handle commas and quotes in fields
+      const row = rowArray.map(field => `"${String(field).replace(/"/g, '""')}"`).join(","); 
       csvContent += row + "\r\n";
     });
 
@@ -104,8 +104,8 @@ export function PhoneNumberManager({ initialPhoneNumbers }: PhoneNumberManagerPr
 
   return (
     <div className="space-y-6">
-       <div className="flex flex-wrap justify-between items-center gap-4">
-        <h3 className="text-xl font-semibold text-foreground">قائمة أرقام هواتف العملاء</h3>
+       <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
+        {/* Title removed from here, it's in AccordionTrigger now */}
         <div className="flex gap-2">
           <Button onClick={fetchPhoneNumbers} disabled={isFetching || isPending} variant="outline" size="sm" className="glass-button">
             <RefreshCw className={`ml-2 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />

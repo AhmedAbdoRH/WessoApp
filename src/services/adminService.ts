@@ -15,6 +15,7 @@ import {
   getDocs,
   where,
   writeBatch,
+  limit,
 } from 'firebase/firestore';
 import type { AppConfig, CarTypeOptionAdmin, CarModelOptionAdmin, CustomerContactAdmin } from '@/types/admin';
 import { slugify } from '@/lib/slugify';
@@ -24,7 +25,7 @@ const APP_CONFIG_COLLECTION = 'appConfig';
 const APP_CONFIG_DOC_ID = 'main';
 const CAR_TYPES_COLLECTION = 'carTypes';
 const CAR_MODELS_COLLECTION = 'carModels';
-const CUSTOMER_CONTACTS_COLLECTION = 'customerContacts'; // New collection for phone numbers
+const CUSTOMER_CONTACTS_COLLECTION = 'customerContacts'; 
 
 // --- App Configuration ---
 export async function getAppConfig(): Promise<AppConfig | null> {
@@ -71,11 +72,14 @@ export async function updateAppConfigAdmin(formData: FormData): Promise<void> {
       configUpdate.logoUrl = '';
       configUpdate.logoPublicId = '';
     } else {
+      // No new file and not removing, so keep existing if it's there
       const existingConfig = await getAppConfig();
       if (existingConfig?.logoUrl && existingConfig?.logoPublicId){
+        // Retain existing logo if no action is taken
         configUpdate.logoUrl = existingConfig.logoUrl;
         configUpdate.logoPublicId = existingConfig.logoPublicId;
       } else {
+        // If there was no existing logo, ensure fields are empty
         configUpdate.logoUrl = '';
         configUpdate.logoPublicId = '';
       }
@@ -234,7 +238,8 @@ export async function addCarTypeAdmin(
     const uploadResult = await uploadImageToCloudinary(imageUrlInput, 'car_types');
     const value = slugify(label);
 
-    const dataToSave: Omit<CarTypeOptionAdmin, 'id'> = {
+    // Create a new object without imageUrlInput for Firestore
+    const dataToSave: Omit<CarTypeOptionAdmin, 'id' | 'imageUrlInput'> = {
       label,
       order,
       value,
@@ -275,13 +280,15 @@ export async function updateCarTypeAdmin(
       newImageUrl = uploadResult.secure_url;
       newPublicId = uploadResult.public_id;
     } else if (imageUrlInput === null && data.currentPublicId) { 
+      // This case handles explicit removal of the image by clearing the file input and current image was present
       await deleteImageFromCloudinary(data.currentPublicId).catch(e => console.warn("Failed to delete car type image for removal, continuing:", e instanceof Error ? e.message : String(e)));
       newImageUrl = '';
       newPublicId = '';
     }
   
     const docRef = doc(db, CAR_TYPES_COLLECTION, id);
-    const updatePayload: Partial<Omit<CarTypeOptionAdmin, 'id'>> = { 
+    // Prepare payload for Firestore, do not include imageUrlInput
+    const updatePayload: Partial<Omit<CarTypeOptionAdmin, 'id' | 'imageUrlInput'>> = { 
         ...(updateDataFromForm.label && { label: updateDataFromForm.label }),
         ...(updateDataFromForm.order !== undefined && { order: updateDataFromForm.order }),
      };
@@ -295,8 +302,8 @@ export async function updateCarTypeAdmin(
 
     // Only update image fields if they have actually changed
     if (newImageUrl !== data.currentImageUrl || newPublicId !== data.currentPublicId) {
-      updatePayload.imageUrl = newImageUrl || ''; // Ensure empty string if newImageUrl is undefined
-      updatePayload.publicId = newPublicId || ''; // Ensure empty string if newPublicId is undefined
+      updatePayload.imageUrl = newImageUrl || ''; 
+      updatePayload.publicId = newPublicId || ''; 
     }
     
     if (Object.keys(updatePayload).length > 0) {
@@ -378,7 +385,8 @@ export async function addCarModelAdmin(
     const uploadResult = await uploadImageToCloudinary(imageUrlInput, `car_models/${type || 'general'}`);
     const value = slugify(label);
 
-    const dataToSave: Omit<CarModelOptionAdmin, 'id'> = {
+    // Create a new object without imageUrlInput for Firestore
+    const dataToSave: Omit<CarModelOptionAdmin, 'id' | 'imageUrlInput'> = {
       label,
       type,
       order,
@@ -428,7 +436,8 @@ export async function updateCarModelAdmin(
     }
 
     const docRef = doc(db, CAR_MODELS_COLLECTION, id);
-    const updatePayload: Partial<Omit<CarModelOptionAdmin, 'id' >> = {
+    // Prepare payload for Firestore, do not include imageUrlInput
+    const updatePayload: Partial<Omit<CarModelOptionAdmin, 'id' | 'imageUrlInput' >> = {
         ...(updateDataFromForm.label && { label: updateDataFromForm.label }),
         ...(updateDataFromForm.type && { type: updateDataFromForm.type }),
         ...(updateDataFromForm.order !== undefined && { order: updateDataFromForm.order }),
@@ -490,6 +499,8 @@ export async function getCarTypesForBooking(): Promise<Omit<CarTypeOptionAdmin, 
         value: data.value, 
         label: data.label,
         imageUrl: data.imageUrl,
+        // Ensure dataAiHint is present if it exists, otherwise undefined.
+        dataAiHint: data.dataAiHint,
       } as Omit<CarTypeOptionAdmin, 'order' | 'id' | 'publicId'>;
     });
   } catch (error) {
@@ -513,6 +524,8 @@ export async function getCarModelsForBooking(carTypeValue: string): Promise<Omit
         value: data.value, 
         label: data.label,
         imageUrl: data.imageUrl,
+         // Ensure dataAiHint is present if it exists, otherwise undefined.
+        dataAiHint: data.dataAiHint,
       } as Omit<CarModelOptionAdmin, 'order' | 'type'| 'id' | 'publicId'>;
     });
   } catch (error) {
@@ -537,6 +550,18 @@ export async function getPhoneNumbersAdmin(): Promise<CustomerContactAdmin[]> {
       throw new Error(`Failed to get phone numbers: ${error.message}`);
     }
     throw new Error('An unknown error occurred while fetching phone numbers.');
+  }
+}
+
+export async function checkPhoneNumberExists(phoneNumber: string): Promise<boolean> {
+  try {
+    const q = query(collection(db, CUSTOMER_CONTACTS_COLLECTION), where('phoneNumber', '==', phoneNumber), limit(1));
+    const querySnapshot = await getDocs(q);
+    return !querySnapshot.empty;
+  } catch (error) {
+    console.error("Error checking phone number existence:", error);
+    // Default to false to allow saving if check fails, or handle error as appropriate
+    return false; 
   }
 }
 

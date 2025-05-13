@@ -22,7 +22,7 @@ import { OrderSummary } from "./steps/OrderSummary";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { getCarTypesForBooking, getCarModelsForBooking } from '@/services/adminService'; 
+import { getCarTypesForBooking, getCarModelsForBooking, checkPhoneNumberExists } from '@/services/adminService'; 
 import type { CarTypeOptionAdmin } from '@/types/admin';
 
 
@@ -265,17 +265,23 @@ const BookingForm: FC = () => {
        });
      }
 
-     // Attempt to save customer contact info, regardless of main booking save success
+     // Attempt to save customer contact info, only if it doesn't exist
      try {
-        const contactData = {
-            firstName: data.firstName, // Include firstName here
-            phoneNumber: data.phoneNumber,
-            createdAt: new Date().toISOString(),
-        };
-        await addDoc(collection(db, "customerContacts"), contactData);
-        console.log("Customer contact saved to Firestore.");
+        const numberExists = await checkPhoneNumberExists(data.phoneNumber);
+        if (!numberExists) {
+            const contactData = {
+                firstName: data.firstName,
+                phoneNumber: data.phoneNumber,
+                createdAt: new Date().toISOString(),
+            };
+            await addDoc(collection(db, "customerContacts"), contactData);
+            console.log("New customer contact saved to Firestore.");
+        } else {
+            console.log("Customer contact with this phone number already exists.");
+        }
     } catch (contactError) {
-        console.error("Error saving customer contact to Firestore:", contactError);
+        console.error("Error saving/checking customer contact to Firestore:", contactError);
+        // Optionally inform user or log more verbosely
     }
      
     const pickupMapLink = getGoogleMapsLinkFromAddress(data.pickupLocation.address);
@@ -400,6 +406,7 @@ ${dropoffMapLink ? `${dropoffMapLink}` : ''}
 export default BookingForm;
 
       
+
 
 
 
