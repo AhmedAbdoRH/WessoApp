@@ -8,26 +8,26 @@ body {
 
 @layer base {
   :root {
-    /* Light Theme variables - update as per style guidelines */
-    --background-light: 210 40% 98%; /* Light Blue base */
-    --foreground-light: 210 40% 10%; /* Darker foreground for light bg */
-    --card-light: 0 0% 100%; /* White card */
-    --card-foreground-light: 210 40% 10%;
+    /* Light Theme variables - Mint Green and Lemon Yellow */
+    --background-light: 0 0% 100%;       /* White background */
+    --foreground-light: 220 15% 25%;     /* Dark Slate Blue for text */
+    --card-light: 0 0% 100%;             /* White card base (opacity set by .glass-card) */
+    --card-foreground-light: 220 15% 25%;
     --popover-light: 0 0% 100%;
-    --popover-foreground-light: 210 40% 10%;
-    --primary-light: 259 95% 65%; /* Purple */
-    --primary-foreground-light: 0 0% 100%; /* White */
-    --secondary-light: 210 40% 90%; /* Lighter secondary */
-    --secondary-foreground-light: 259 50% 30%;
-    --muted-light: 210 40% 90%;
-    --muted-foreground-light: 210 30% 50%;
-    --accent-light: 177 78% 52%; /* Teal from guidelines (#4DB6AC) */
-    --accent-foreground-light: 0 0% 100%; /* White for Teal accent */
-    --destructive-light: 0 84.2% 60.2%; /* Light red */
+    --popover-foreground-light: 220 15% 25%;
+    --primary-light: 160 70% 45%;        /* Mint Green */
+    --primary-foreground-light: 0 0% 100%; /* White text on Mint Green */
+    --secondary-light: 160 70% 90%;      /* Lighter Mint for secondary elements */
+    --secondary-foreground-light: 160 70% 30%; /* Darker Mint for text on light mint */
+    --muted-light: 160 70% 95%;          /* Very Light Mint for muted backgrounds */
+    --muted-foreground-light: 160 40% 50%; /* Muted Mint text */
+    --accent-light: 52 95% 55%;          /* Lemon Yellow */
+    --accent-foreground-light: 0 0% 100%;  /* White text on Lemon Yellow */
+    --destructive-light: 0 84.2% 60.2%;
     --destructive-foreground-light: 0 0% 98%;
-    --border-light: 210 40% 85%;
-    --input-light: 210 40% 85%;
-    --ring-light: 177 78% 52%; /* Teal for focus rings */
+    --border-light: 160 50% 80%;         /* Light Mint border */
+    --input-light: 0 0% 100%;            /* White input base (opacity/style via .glass-input) */
+    --ring-light: 160 70% 45%;           /* Mint Green for focus rings */
 
     /* Dark theme variables - Adjusted for black/brown gradient and Teal accent */
     --background: 25 15% 6%; /* Dark Brown-Black */
@@ -98,16 +98,15 @@ body {
   * {
     @apply border-border;
   }
+  /* Default dark theme body background */
   body {
-    /* Dark gradient from Black to Dark Brown */
     @apply bg-gradient-to-br from-[hsl(0,0%,0%)] via-[hsl(25,15%,4%)] to-[hsl(25,20%,8%)] text-foreground;
     font-family: 'Cairo', sans-serif; /* Ensure Cairo font is applied */
   }
 
-  /* Light theme body background with specified gradients */
+  /* Light theme body background with subtle mint/lemon gradient */
   html.light body {
-     /* Gradient from light blue, to light purple, pastel pink, mint green */
-    @apply bg-gradient-to-br from-blue-100 via-purple-100 via-pink-100 to-green-100 text-foreground;
+    @apply bg-gradient-to-br from-[hsl(160,100%,97%)] via-[hsl(52,100%,97%)] to-[hsl(160,100%,97%)] text-foreground;
   }
 }
 
@@ -125,18 +124,31 @@ body {
 
 
 @layer components {
-  /* Glassmorphism card style */
+  /* Glassmorphism card style - works for both light and dark */
   .glass-card {
-    @apply bg-card/60 dark:bg-card/60 backdrop-blur-xl border border-border/30 rounded-2xl shadow-2xl p-4 sm:p-6 transition-all duration-300 hover:shadow-accent/30;
-    /* Increased rounding, adjusted backdrop blur and alpha for card, hover shadow uses accent */
+    @apply bg-card/60 dark:bg-card/70 backdrop-blur-xl border border-border/30 rounded-2xl shadow-2xl p-4 sm:p-6 transition-all duration-300 hover:shadow-primary/20 dark:hover:shadow-accent/30;
   }
 
-  /* Glassmorphism button style */
+  /* Glassmorphism button style - base for light, dark: overrides */
   .glass-button {
-    @apply bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-border/20 rounded-xl shadow-lg py-2.5 px-5 transition-all duration-300 hover:bg-white/20 dark:hover:bg-white/10 hover:shadow-accent/50 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed text-white;
-     /* Default text to white, can be overridden by variants */
+    @apply bg-white/20 /* Light: slightly opaque white */
+           backdrop-blur-md
+           border border-primary/30 /* Light: primary accent border */
+           rounded-xl shadow-lg py-2.5 px-5
+           transition-all duration-300
+           text-primary /* Light: primary color text */
+           hover:bg-white/30 /* Light: hover effect */
+           hover:shadow-primary/40 dark:hover:shadow-accent/50 /* Adjusted hover shadow for light theme */
+           active:scale-95
+           disabled:opacity-60 disabled:cursor-not-allowed
+           
+           dark:bg-white/5 /* Dark: very faint white */
+           dark:border-border/20 /* Dark: subtle border */
+           dark:text-white /* Dark: white text */
+           dark:hover:bg-white/10; /* Dark: hover effect */
   }
   /* Ensure button variants that use primary/accent also use their foreground colors */
+  /* These should generally work if the HSL variables are set up correctly for both themes */
   .glass-button.bg-primary, .glass-button.bg-primary\/80 {
     @apply text-primary-foreground;
   }
@@ -145,15 +157,14 @@ body {
   }
 
 
-   /* Glassmorphism input style */
+   /* Glassmorphism input style - works for both light and dark via CSS vars */
   .glass-input {
     @apply bg-input/50 dark:bg-input/50 backdrop-blur-sm border border-border/30 rounded-xl shadow-inner text-foreground placeholder-muted-foreground focus:ring-ring focus:border-ring focus:bg-input/70 dark:focus:bg-input/70;
-    /* Adjusted alpha for inputs, focus ring uses variable --ring (Teal) */
    }
 
   /* Glassmorphism radio button style (visual only, actual radio is hidden) */
   .glass-radio-card {
-      @apply glass-card p-3 sm:p-4 cursor-pointer; /* Re-use glass-card for radio-like cards */
+      @apply glass-card p-3 sm:p-4 cursor-pointer; 
   }
    .glass-radio-label {
       @apply ml-2 text-xs sm:text-sm font-medium text-foreground select-none cursor-pointer;
@@ -174,26 +185,31 @@ body {
   .admin-form input[type="number"],
   .admin-form select,
   .admin-form textarea {
-    @apply glass-input w-full p-2.5 mb-3 text-base; /* Ensure inputs also get glass style and rounding */
+    @apply glass-input w-full p-2.5 mb-3 text-base; 
   }
   .admin-form textarea {
     @apply min-h-[100px];
   }
+  /* Admin submit buttons will use accent and its foreground by default from CSS vars */
   .admin-form button[type="submit"] {
-    @apply glass-button bg-accent/80 hover:bg-accent text-accent-foreground; /* Use accent color */
+    @apply glass-button bg-accent/80 hover:bg-accent text-accent-foreground;
   }
   .admin-item-list {
     @apply space-y-3;
   }
   .admin-item {
-    @apply glass-card p-4 flex justify-between items-center bg-card/70; /* Subtle item background */
+    @apply glass-card p-4 flex justify-between items-center bg-card/70 dark:bg-card/80;
   }
   .admin-item-actions button {
-    @apply glass-button text-xs px-3 py-1.5 ml-2; /* Smaller buttons for actions */
+    @apply glass-button text-xs px-3 py-1.5 ml-2;
+    /* Override default glass-button text for general admin action buttons if needed */
+    @apply text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-foreground;
   }
+  
   /* Specific styling for buttons with .text-destructive class within .admin-item-actions */
   .admin-item-actions button.text-destructive {
     @apply border-destructive/50 hover:bg-destructive/20; 
+    color: hsl(var(--destructive)); /* Use CSS variable directly */
   }
    .admin-item-actions button.text-destructive:hover {
     @apply text-destructive-foreground; 
@@ -208,19 +224,17 @@ body {
     @apply relative w-full overflow-hidden;
     height: 1.25rem; /* 20px */
     border-radius: 6px;
-    /* Outline and border removed to remove the frame */
-    background-color: hsl(var(--background)); /* Consistent with theme */
-    box-shadow: inset 0.2rem 0.2rem 0.5rem hsl(var(--muted)), /* Adapted shadow */
-                inset -0.2rem -0.2rem 0.5rem hsl(var(--border));
-    /* outline-animation removed as outline is gone */
+    background-color: hsl(var(--muted)); /* Use muted for track bg for better contrast */
+    box-shadow: inset 0.2rem 0.2rem 0.5rem hsl(var(--muted) / 0.7),
+                inset -0.2rem -0.2rem 0.5rem hsl(var(--border) / 0.7);
   }
 
   .progress-bar { /* Applied to ProgressPrimitive.Indicator */
     @apply h-full w-full flex-1 transition-transform duration-500 ease-out;
-    background-color: hsl(var(--primary)); /* Main fill color - orange/red */
+    background-color: hsl(var(--primary)); 
     background-image: linear-gradient(
       45deg,
-      hsla(var(--primary-foreground), 0.2) 25%, /* Lighter stripes using foreground with alpha */
+      hsla(var(--primary-foreground), 0.2) 25%,
       transparent 25%,
       transparent 50%,
       hsla(var(--primary-foreground), 0.2) 50%,
@@ -231,13 +245,12 @@ body {
     background-size: 1.25rem 1.25rem; /* Stripe size */
     border-radius: 4px; /* Inner radius slightly smaller than track */
     animation: stripes-anim 1s linear infinite; /* Stripe animation */
-    box-shadow: inset 0.1rem 0.1rem 0.3rem hsla(var(--primary-foreground), 0.3), /* Softer inset shadow */
+    box-shadow: inset 0.1rem 0.1rem 0.3rem hsla(var(--primary-foreground), 0.3), 
                 inset -0.1rem -0.1rem 0.3rem hsla(0, 0%, 0%, 0.2);
   }
-  .ai-generated-dummy-empty-rule {} /* Added dummy rule */
-}
+} /* Ensure @layer components is closed */
 
 /* Override ShadCN default input background for our glass style */
-.dark .input, .input {
-  background-color: transparent !important; /* Important to override ShadCN if it sets explicit bg */
+.input { /* Removed .dark selector to apply to both themes */
+  background-color: transparent !important; 
 }

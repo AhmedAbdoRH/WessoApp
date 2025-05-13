@@ -35,14 +35,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // Add lang="ar" and dir="rtl" and force dark theme
-    <html lang="ar" dir="rtl" className="dark" suppressHydrationWarning>
+    // Add lang="ar" and dir="rtl". Removed className="dark" to allow ThemeProvider to control theme.
+    <html lang="ar" dir="rtl" suppressHydrationWarning>
       {/* Apply the font variable if using a custom Arabic font */}
       {/* <body className={`${cairo.variable} font-sans antialiased`}> */}
       <body className={`antialiased`}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark" // Default to dark theme based on new style guidelines
+          defaultTheme="light" // Default to light theme
           enableSystem={false} // Disable system preference detection
           disableTransitionOnChange
         >
@@ -53,3 +53,4 @@ export default function RootLayout({
     </html>
   );
 }
+
