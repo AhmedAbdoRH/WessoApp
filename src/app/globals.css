@@ -21,34 +21,34 @@ body {
     --secondary-foreground-light: 259 50% 30%;
     --muted-light: 210 40% 90%;
     --muted-foreground-light: 210 30% 50%;
-    --accent-light: 16 100% 50%; /* Orange/Red */
-    --accent-foreground-light: 0 0% 100%;
+    --accent-light: 177 78% 52%; /* Teal from guidelines (#4DB6AC) */
+    --accent-foreground-light: 0 0% 100%; /* White for Teal accent */
     --destructive-light: 0 84.2% 60.2%; /* Light red */
     --destructive-foreground-light: 0 0% 98%;
     --border-light: 210 40% 85%;
     --input-light: 210 40% 85%;
-    --ring-light: 259 95% 65%; /* Purple */
+    --ring-light: 177 78% 52%; /* Teal for focus rings */
 
-    /* Dark theme variables */
-    --background: 220 25% 4%; /* Very Dark Blue/Almost Black */
-    --foreground: 0 0% 95%;   /* Light text */
-    --card: 220 20% 8%;       /* Slightly Lighter Dark Card */
-    --card-foreground: 0 0% 95%;
-    --popover: 220 25% 4%;
-    --popover-foreground: 0 0% 95%;
-    --primary: 259 95% 65%; /* Purple */
+    /* Dark theme variables - Adjusted for black/brown gradient and Teal accent */
+    --background: 25 15% 6%; /* Dark Brown-Black */
+    --foreground: 30 10% 85%;   /* Off-white/Light Beige text */
+    --card: 25 12% 10%;       /* Slightly Lighter Dark Brown Card */
+    --card-foreground: 30 10% 85%;
+    --popover: 25 15% 6%;
+    --popover-foreground: 30 10% 85%;
+    --primary: 16 100% 50%; /* Orange/Red (from previous dark theme) - for progress bar */
     --primary-foreground: 0 0% 100%; /* White */
-    --secondary: 220 15% 12%; /* Darker secondary */
-    --secondary-foreground: 0 0% 95%;
-    --muted: 220 15% 12%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 16 100% 50%; /* Orange/Red */
-    --accent-foreground: 0 0% 100%; /* White */
+    --secondary: 25 10% 15%; /* Darker Brown-Black secondary */
+    --secondary-foreground: 30 10% 85%;
+    --muted: 25 10% 15%;
+    --muted-foreground: 30 10% 60%;
+    --accent: 177 78% 52%; /* Teal accent (#4DB6AC) */
+    --accent-foreground: 0 0% 100%; /* White text on Teal */
     --destructive: 0 70% 50%; /* Darker red */
     --destructive-foreground: 0 0% 98%;
-    --border: 220 15% 20%;    /* Slightly lighter border for contrast */
-    --input: 220 15% 15%;     /* Slightly lighter input bg */
-    --ring: 259 95% 65%; /* Purple for focus rings */
+    --border: 25 10% 20%;    /* Slightly lighter border for contrast */
+    --input: 25 10% 18%;     /* Slightly lighter input bg */
+    --ring: 177 78% 52%; /* Teal for focus rings */
     
     --radius: 0.75rem; /* Rounded corners */
 
@@ -70,8 +70,27 @@ body {
     --sidebar-ring: hsl(var(--ring));
   }
 
-  .dark {
-     /* Variables are already set above for the dark theme */
+  /* Apply light theme variables if .light class is present */
+  .light {
+    --background: var(--background-light);
+    --foreground: var(--foreground-light);
+    --card: var(--card-light);
+    --card-foreground: var(--card-foreground-light);
+    --popover: var(--popover-light);
+    --popover-foreground: var(--popover-foreground-light);
+    --primary: var(--primary-light);
+    --primary-foreground: var(--primary-foreground-light);
+    --secondary: var(--secondary-light);
+    --secondary-foreground: var(--secondary-foreground-light);
+    --muted: var(--muted-light);
+    --muted-foreground: var(--muted-foreground-light);
+    --accent: var(--accent-light);
+    --accent-foreground: var(--accent-foreground-light);
+    --destructive: var(--destructive-light);
+    --destructive-foreground: var(--destructive-foreground-light);
+    --border: var(--border-light);
+    --input: var(--input-light);
+    --ring: var(--ring-light);
   }
 }
 
@@ -80,45 +99,44 @@ body {
     @apply border-border;
   }
   body {
-    /* Dark gradient using primary dark theme colors */
-    @apply bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(var(--background))] to-[hsl(220,30%,2%)] text-foreground;
+    /* Dark gradient from Black to Dark Brown */
+    @apply bg-gradient-to-br from-[hsl(0,0%,0%)] via-[hsl(25,15%,4%)] to-[hsl(25,20%,8%)] text-foreground;
     font-family: 'Cairo', sans-serif; /* Ensure Cairo font is applied */
   }
 
-  html.dark body {
-    /* Ensure this matches the default body for dark theme */
-    @apply bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(var(--background))] to-[hsl(220,30%,2%)] text-foreground;
+  /* Light theme body background with specified gradients */
+  html.light body {
+     /* Gradient from light blue, to light purple, pastel pink, mint green */
+    @apply bg-gradient-to-br from-blue-100 via-purple-100 via-pink-100 to-green-100 text-foreground;
+    /* Example: from-[hsl(200,100%,90%)] via-[hsl(280,100%,90%)] through-[hsl(330,100%,90%)] to-[hsl(150,100%,90%)] */
   }
 }
 
 @layer components {
   /* Glassmorphism card style */
   .glass-card {
-    @apply bg-card/60 dark:bg-card/60 backdrop-blur-xl border border-border/30 rounded-2xl shadow-2xl p-4 sm:p-6 transition-all duration-300 hover:shadow-primary/30;
-    /* Increased rounding, adjusted backdrop blur and alpha for card */
+    @apply bg-card/60 dark:bg-card/60 backdrop-blur-xl border border-border/30 rounded-2xl shadow-2xl p-4 sm:p-6 transition-all duration-300 hover:shadow-accent/30;
+    /* Increased rounding, adjusted backdrop blur and alpha for card, hover shadow uses accent */
   }
 
   /* Glassmorphism button style */
   .glass-button {
-    @apply bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-border/20 rounded-xl shadow-lg text-white py-2.5 px-5 transition-all duration-300 hover:bg-white/20 dark:hover:bg-white/10 hover:shadow-primary/50 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed;
-    /* Adjusted alpha for buttons, ensured text-white default */
+    @apply bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-border/20 rounded-xl shadow-lg py-2.5 px-5 transition-all duration-300 hover:bg-white/20 dark:hover:bg-white/10 hover:shadow-accent/50 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed text-white;
+     /* Default text to white, can be overridden by variants */
   }
+  /* Ensure button variants that use primary/accent also use their foreground colors */
   .glass-button.bg-primary, .glass-button.bg-primary\/80 {
-    @apply text-primary-foreground; /* This should be white if primary-foreground is white */
+    @apply text-primary-foreground;
   }
   .glass-button.bg-accent, .glass-button.bg-accent\/80 {
-    @apply text-accent-foreground; /* This should be white if accent-foreground is white */
-  }
-   /* Ensure all buttons, including default, have white text if no specific foreground is set by variant */
-  .glass-button:not([class*="text-primary-foreground"]):not([class*="text-accent-foreground"]) {
-    @apply text-white;
+    @apply text-accent-foreground;
   }
 
 
    /* Glassmorphism input style */
   .glass-input {
-    @apply bg-input/50 dark:bg-input/50 backdrop-blur-sm border border-border/30 rounded-xl shadow-inner text-foreground placeholder-muted-foreground focus:ring-primary focus:border-primary focus:bg-input/70 dark:focus:bg-input/70;
-    /* Adjusted alpha for inputs */
+    @apply bg-input/50 dark:bg-input/50 backdrop-blur-sm border border-border/30 rounded-xl shadow-inner text-foreground placeholder-muted-foreground focus:ring-ring focus:border-ring focus:bg-input/70 dark:focus:bg-input/70;
+    /* Adjusted alpha for inputs, focus ring uses variable --ring (Teal) */
    }
 
   /* Glassmorphism radio button style (visual only, actual radio is hidden) */
@@ -150,7 +168,7 @@ body {
     @apply min-h-[100px];
   }
   .admin-form button[type="submit"] {
-    @apply glass-button bg-primary/80 hover:bg-primary text-primary-foreground;
+    @apply glass-button bg-accent/80 hover:bg-accent text-accent-foreground; /* Use accent color */
   }
   .admin-item-list {
     @apply space-y-3;
@@ -161,30 +179,18 @@ body {
   .admin-item-actions button {
     @apply glass-button text-xs px-3 py-1.5 ml-2; /* Smaller buttons for actions */
   }
+  /* Specific styling for buttons with .text-destructive class within .admin-item-actions */
   .admin-item-actions button.text-destructive {
     @apply border-destructive/50 hover:bg-destructive/20 text-destructive-foreground; 
+    /* text-destructive-foreground is applied for both normal and hover state text color by this rule */
   }
    .admin-item-actions button.text-destructive:hover {
-    @apply text-destructive-foreground;
-  }
-  .admin-subtle-button {
-    @apply fixed bottom-4 right-4 p-3 bg-primary/70 text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-opacity duration-300 z-50 opacity-30 hover:opacity-100;
+    @apply text-destructive-foreground; /* Explicitly ensures text color on hover for these buttons */
   }
 
-  /* Corrected rules for reported CSS syntax error */
-  /* These selectors target an element with class "hover:text-destructive" when it is hovered. */
-  /* This is unusual if standard Tailwind hover variants are used on the element itself, */
-  /* but this directly addresses the selectors from the error message. */
-  .admin-item-actions .hover\:text-destructive:hover {
-    border-color: hsl(var(--destructive) / 0.5);
-    color: hsl(var(--destructive-foreground)); /* This color was part of the original problematic rule */
+  .admin-subtle-button {
+    @apply fixed bottom-4 right-4 p-3 bg-accent/70 text-accent-foreground rounded-full shadow-lg hover:bg-accent/90 transition-opacity duration-300 z-50 opacity-30 hover:opacity-100;
   }
-  /*
-    The selector .admin-item-actions .hover\:text-destructive:hoverbutton:hover (which is invalid)
-    would simplify to .admin-item-actions .hover\:text-destructive:hover if `:hoverbutton` was meant to be `:hover`.
-    Its original content was: color: hsl(var(--destructive-foreground));
-    This is now covered by the rule above, so no separate rule is needed for this specific permutation.
-  */
 }
 
 /* Override ShadCN default input background for our glass style */
