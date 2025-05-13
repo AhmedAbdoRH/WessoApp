@@ -1,6 +1,4 @@
-
-"use client";
-
+// src/components/steps/CarTypeSelection.tsx
 import type { FC } from 'react';
 import React from 'react';
 import { useFormContext } from 'react-hook-form';
@@ -9,50 +7,48 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { BookingFormData } from '../BookingForm'; // Adjust path as necessary
-
-interface CarTypeOption {
-  value: string; // Keep value in English for consistency
-  label: string; // Label in Arabic
-  imageUrl: string;
-  dataAiHint?: string;
-}
-
-const carTypes: CarTypeOption[] = [
-  { value: 'limousine', label: 'ليموزين', imageUrl: 'https://picsum.photos/seed/limo/300/200', dataAiHint: 'luxury limousine' },
-  { value: 'sedan', label: 'سيدان (ملاكي)', imageUrl: 'https://picsum.photos/seed/sedan/300/200', dataAiHint: 'sedan car' },
-  { value: 'large', label: 'سيارة كبيرة', imageUrl: 'https://picsum.photos/seed/large/300/200', dataAiHint: 'suv car' },
-  { value: '7seater', label: '7 مقاعد', imageUrl: 'https://picsum.photos/seed/7seater/300/200', dataAiHint: 'van car' },
-];
+import type { BookingFormData } from '../BookingForm';
+import type { CarTypeOptionAdmin } from '@/types/admin'; // Using admin type for consistency for now
 
 interface CarTypeSelectionProps {
   errors: any;
-  onNext?: () => Promise<void> | void; // Optional prop for auto-advancing
+  onNext?: () => Promise<void> | void;
+  carTypes: Omit<CarTypeOptionAdmin, 'order' | 'dataAiHint'>[]; // Fetched from server
 }
 
-export const CarTypeSelection: FC<CarTypeSelectionProps> = ({ errors, onNext }) => {
+// This component is now a client component because it uses hooks (useFormContext)
+// and interactivity (onClick). The data (carTypes) will be passed as a prop from a server component.
+export const CarTypeSelection: FC<CarTypeSelectionProps> = ({ errors, onNext, carTypes }) => {
   const { register, watch, setValue, resetField } = useFormContext<BookingFormData>();
   const selectedCarType = watch('carType');
 
   const handleSelect = async (value: string) => {
-    setValue('carType', value, { shouldValidate: true });
-    resetField('carModel', { defaultValue: '' });
-     await new Promise(resolve => setTimeout(resolve, 0));
-     setValue('carModel', '', { shouldValidate: true });
+    setValue('carType', value, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+    // Reset carModel when carType changes, as models depend on type
+    setValue('carModel', '', { shouldValidate: false, shouldDirty: true }); // Don't validate immediately, wait for model selection
 
-     if (onNext) {
-       await onNext();
-     }
+    if (onNext) {
+      await onNext();
+    }
   };
+
+  if (!carTypes || carTypes.length === 0) {
+    return (
+      <div className="space-y-6 text-center">
+        <Label className="text-xl font-semibold text-foreground block mb-4">اختر نوع السيارة</Label>
+        <p className="text-muted-foreground">لا توجد أنواع سيارات متاحة حاليًا. يرجى مراجعة المسؤول.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <Label className="text-xl font-semibold text-foreground block mb-4">اختر نوع السيارة</Label>
-       <p className="text-sm text-muted-foreground mb-6">اختر نوع السيارة الذي يناسب احتياجاتك.</p>
-      <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 sm:gap-4"> {/* Adjusted grid for potentially smaller cards */}
+      <p className="text-sm text-muted-foreground mb-6">اختر نوع السيارة الذي يناسب احتياجاتك.</p>
+      <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 sm:gap-4">
         {carTypes.map((car) => (
           <motion.div
-             key={car.value}
+             key={car.value} // value is the ID from Firestore
              whileHover={{ scale: 1.03 }}
              whileTap={{ scale: 0.98 }}
            >
@@ -73,22 +69,24 @@ export const CarTypeSelection: FC<CarTypeSelectionProps> = ({ errors, onNext }) 
                  id={`carType-${car.value}`}
                  value={car.value}
                  {...register('carType')}
+                 checked={selectedCarType === car.value}
                  className="sr-only"
                  aria-labelledby={`carType-label-${car.value}`}
                />
-              <CardHeader className="p-0 relative h-32"> {/* Reduced height from h-40 */}
+              <CardHeader className="p-0 relative h-28 sm:h-32">
                 <Image
-                  src={car.imageUrl}
-                  alt={car.label} // Use Arabic label for alt text
+                  src={car.imageUrl || "https://picsum.photos/300/200"} // Fallback image
+                  alt={car.label}
                   layout="fill"
                   objectFit="cover"
                   className="rounded-t-lg"
-                  data-ai-hint={car.dataAiHint}
+                  data-ai-hint={car.dataAiHint || "car image"}
+                  quality={75}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent rounded-t-lg"></div>
               </CardHeader>
-              <CardContent className="p-3"> {/* Reduced padding from p-4 */}
-                <CardTitle id={`carType-label-${car.value}`} className="text-base font-medium text-center text-foreground">{car.label}</CardTitle> {/* Reduced font size from text-lg */}
+              <CardContent className="p-2 sm:p-3">
+                <CardTitle id={`carType-label-${car.value}`} className="text-sm sm:text-base font-medium text-center text-foreground truncate">{car.label}</CardTitle>
               </CardContent>
             </Card>
           </motion.div>

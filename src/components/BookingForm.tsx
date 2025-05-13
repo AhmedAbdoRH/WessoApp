@@ -2,14 +2,14 @@
 "use client";
 
 import type { FC } from 'react';
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, FormProvider, type SubmitHandler } from "react-hook-form";
 import * as z from "zod";
-import { motion } from "framer-motion";
+import { motion } from "framer-motion"; // Kept motion for transitions
 import { ArrowLeft } from 'lucide-react'; 
-import { getFirestore, collection, addDoc } from "firebase/firestore"; // Firebase imports
-import { db } from "@/lib/firebase"; // Firebase db instance
+import { db } from "@/lib/firebase"; 
+import { collection, addDoc } from "firebase/firestore";
 
 import { CarTypeSelection } from "./steps/CarTypeSelection";
 import { CarModelSelection } from "./steps/CarModelSelection";
@@ -21,6 +21,8 @@ import { OrderSummary } from "./steps/OrderSummary";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
+import { getCarTypesForBooking, getCarModelsForBooking } from '@/services/adminService'; // Import service
+import type { CarTypeOptionAdmin } from '@/types/admin';
 
 
 const locationDetailSchema = z.object({
@@ -45,25 +47,45 @@ const bookingSchema = z.object({
 
 export type BookingFormData = z.infer<typeof bookingSchema>;
 
-
 type StepFieldName = Exclude<keyof BookingFormData, 'fullName'> | 'firstName' | `${keyof Pick<BookingFormData, 'pickupLocation' | 'dropoffLocation'>}.${keyof BookingFormData['pickupLocation']}`;
 
 
-const steps: { id: string; component: FC<any>; validationFields: StepFieldName[]; autoAdvance?: boolean; props?: Record<string, any> }[] = [
-  { id: 'carType', component: CarTypeSelection, validationFields: ['carType'], autoAdvance: true },
-  { id: 'carModel', component: CarModelSelection, validationFields: ['carModel'], autoAdvance: true },
-  { id: 'passengers', component: PassengerSelection, validationFields: ['passengers'], autoAdvance: true, props: { selectionType: 'passengers' } },
-  { id: 'bags', component: PassengerSelection, validationFields: ['bags'], autoAdvance: true, props: { selectionType: 'bags' } },
-  { id: 'location', component: LocationSelection, validationFields: ['pickupLocation.address', 'pickupLocation.coordinates', 'dropoffLocation.address', 'dropoffLocation.coordinates'] },
-  { id: 'firstName', component: FirstNameInput, validationFields: ['firstName'] }, 
-  { id: 'phoneNumber', component: PhoneNumberInput, validationFields: ['phoneNumber'] }, 
-  { id: 'summary', component: OrderSummary, validationFields: [] }, 
-];
+// Step definition will be memoized after fetching initial data
+type StepDefinition = { 
+  id: string; 
+  component: FC<any>; 
+  validationFields: StepFieldName[]; 
+  autoAdvance?: boolean; 
+  props?: Record<string, any>;
+};
 
 
 const BookingForm: FC = () => {
   const [currentStep, setCurrentStep] = useState(0);
+  const [carTypes, setCarTypes] = useState<Omit<CarTypeOptionAdmin, 'order' | 'dataAiHint'>[]>([]);
+  const [isLoadingInitialData, setIsLoadingInitialData] = useState(true);
   const { toast } = useToast();
+
+  useEffect(() => {
+    async function fetchInitialData() {
+      try {
+        setIsLoadingInitialData(true);
+        const fetchedCarTypes = await getCarTypesForBooking();
+        setCarTypes(fetchedCarTypes);
+      } catch (error) {
+        console.error("Failed to fetch initial booking data:", error);
+        toast({
+          title: "خطأ في تحميل البيانات",
+          description: "لم نتمكن من تحميل بيانات أنواع السيارات. يرجى المحاولة مرة أخرى.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingInitialData(false);
+      }
+    }
+    fetchInitialData();
+  }, [toast]);
+  
 
   const methods = useForm<BookingFormData>({
     resolver: zodResolver(bookingSchema),
@@ -81,8 +103,22 @@ const BookingForm: FC = () => {
   });
 
   const { handleSubmit, trigger, formState: { errors, isSubmitting }, watch } = methods;
+  
+  // Memoize steps definition based on fetched carTypes
+  const steps: StepDefinition[] = useMemo(() => [
+    { id: 'carType', component: CarTypeSelection, validationFields: ['carType'], autoAdvance: true, props: { carTypes: carTypes /* pass fetched types */ } },
+    { id: 'carModel', component: CarModelSelection, validationFields: ['carModel'], autoAdvance: true, props: { allCarTypes: carTypes /* pass for name resolution */ } },
+    { id: 'passengers', component: PassengerSelection, validationFields: ['passengers'], autoAdvance: true, props: { selectionType: 'passengers' } },
+    { id: 'bags', component: PassengerSelection, validationFields: ['bags'], autoAdvance: true, props: { selectionType: 'bags' } },
+    { id: 'location', component: LocationSelection, validationFields: ['pickupLocation.address', 'pickupLocation.coordinates', 'dropoffLocation.address', 'dropoffLocation.coordinates'] },
+    { id: 'firstName', component: FirstNameInput, validationFields: ['firstName'] }, 
+    { id: 'phoneNumber', component: PhoneNumberInput, validationFields: ['phoneNumber'] }, 
+    { id: 'summary', component: OrderSummary, validationFields: [], props: { allCarTypes: carTypes } }, 
+  ], [carTypes]);
+
 
   const handleNext = async () => {
+    if (isLoadingInitialData) return; // Prevent navigation if initial data isn't loaded
     const fieldsToValidate = steps[currentStep].validationFields;
     const isValidStep = await trigger(fieldsToValidate.length > 0 ? fieldsToValidate : undefined, { shouldFocus: true });
 
@@ -91,8 +127,6 @@ const BookingForm: FC = () => {
          setCurrentStep(currentStep + 1);
        }
     } else {
-       console.log("Step validation failed", errors);
-        
         const firstErrorField = fieldsToValidate.find(field => {
             const parts = field.split('.');
             let errorObj: any = errors;
@@ -132,7 +166,6 @@ const BookingForm: FC = () => {
       setCurrentStep(currentStep - 1);
     }
   };
-
    
    const getGoogleMapsLink = (coords?: { latitude?: number; longitude?: number }): string | null => {
      if (coords?.latitude && coords?.longitude) {
@@ -140,7 +173,6 @@ const BookingForm: FC = () => {
      }
      return null;
    };
-
    
     const getGoogleMapsLinkFromAddress = (address?: string): string | null => {
         if (address) {
@@ -149,12 +181,13 @@ const BookingForm: FC = () => {
         return null;
     };
 
-
   const onSubmit: SubmitHandler<BookingFormData> = async (data) => {
-     
+     if (isLoadingInitialData) {
+        toast({ title: "يرجى الانتظار", description: "جاري تحميل بيانات الحجز الأولية.", variant: "default" });
+        return;
+     }
      const isValidForm = await trigger();
      if (!isValidForm) {
-         console.log("Final validation failed", errors);
          toast({
              title: "نموذج غير مكتمل",
              description: "الرجاء مراجعة النموذج بحثًا عن الأخطاء قبل الإرسال.",
@@ -176,39 +209,32 @@ const BookingForm: FC = () => {
          return;
      }
 
-     console.log("Booking Submitted:", data);
      try {
-        // Save to Firestore
-        try {
-            const docRef = await addDoc(collection(db, "bookings"), {
-                ...data,
-                createdAt: new Date().toISOString(), // Add a timestamp
-            });
-            console.log("Document written with ID: ", docRef.id);
-            toast({
-                title: "تم الحفظ بنجاح",
-                description: "تم حفظ طلب الحجز الخاص بك في قاعدة البيانات.",
-            });
-        } catch (e) {
-            console.error("Error adding document: ", e);
-            toast({
-                title: "خطأ في الحفظ",
-                description: "حدث خطأ أثناء حفظ طلبك في قاعدة البيانات. يرجى المحاولة مرة أخرى.",
-                variant: "destructive",
-            });
-            // Optionally, you might want to stop here if DB save is critical
-            // return;
-        }
+        const carTypeLabel = carTypes.find(ct => ct.value === data.carType)?.label || data.carType;
+        // Note: carModelLabel might be complex if it's not just the ID, especially with '-default'
+        // For now, we'll use the carModel value directly, or enhance OrderSummary to resolve it.
+
+        const docData = {
+          ...data,
+          carTypeLabel, // Store readable car type label
+          createdAt: new Date().toISOString(),
+        };
+
+        await addDoc(collection(db, "bookings"), docData);
+        
+        toast({
+            title: "تم إرسال الطلب بنجاح!",
+            description: "تم حفظ طلب الحجز الخاص بك، وسيتم التواصل معك قريباً.",
+        });
 
        const pickupMapLink = getGoogleMapsLink(data.pickupLocation.coordinates) || getGoogleMapsLinkFromAddress(data.pickupLocation.address);
        const dropoffMapLink = getGoogleMapsLink(data.dropoffLocation.coordinates) || getGoogleMapsLinkFromAddress(data.dropoffLocation.address);
-
        
        const message = `
-*طلب حجز جديد من Wesso.App:*
+*طلب حجز جديد من ClearRide:*
 -----------------------------
-*نوع السيارة:* ${data.carType}
-*موديل السيارة:* ${data.carModel}
+*نوع السيارة:* ${carTypeLabel}
+*موديل السيارة:* ${data.carModel} 
 *عدد الركاب:* ${data.passengers}
 *عدد الحقائب:* ${data.bags}
 -----------------------------
@@ -225,24 +251,37 @@ const BookingForm: FC = () => {
        const encodedMessage = encodeURIComponent(message);
        const targetPhoneNumber = "201100434503"; 
        const whatsappUrl = `https://wa.me/${targetPhoneNumber}?text=${encodedMessage}`;
-
-       toast({
-         title: "الحجز جاهز للإرسال!",
-         description: "جاري إعادة توجيهك إلى واتساب لإرسال طلبك...",
-       });
-
        
        window.open(whatsappUrl, '_blank');
+       // Reset form or redirect as needed after submission
+       // methods.reset(); setCurrentStep(0);
 
      } catch (error) {
-       console.error("Error preparing WhatsApp redirect or saving to DB:", error);
+       console.error("Error submitting booking:", error);
        toast({
          title: "خطأ في الإرسال",
-         description: "تعذر تحضير طلب الحجز الخاص بك. يرجى المحاولة مرة أخرى.",
+         description: "تعذر إرسال طلب الحجز الخاص بك. يرجى المحاولة مرة أخرى.",
          variant: "destructive",
        });
      }
   };
+  
+  if (isLoadingInitialData) {
+    return (
+      <div className="glass-card space-y-8 p-6 sm:p-8 flex justify-center items-center min-h-[300px]">
+        <p className="text-foreground text-lg">جاري تحميل إعدادات الحجز...</p>
+      </div>
+    );
+  }
+
+  if (steps.length === 0 || !steps[currentStep]) {
+      return (
+          <div className="glass-card space-y-8 p-6 sm:p-8 flex justify-center items-center min-h-[300px]">
+              <p className="text-destructive text-lg">خطأ في تهيئة خطوات الحجز. يرجى المحاولة لاحقاً.</p>
+          </div>
+      );
+  }
+
 
   const CurrentComponent = steps[currentStep].component;
   const shouldAutoAdvance = steps[currentStep].autoAdvance && currentStep < steps.length - 1;
@@ -259,55 +298,53 @@ const BookingForm: FC = () => {
         noValidate
       >
          <Progress value={progressPercentage} className="w-full mb-6 h-2 bg-white/20 dark:bg-black/20 [&>div]:bg-primary" dir="ltr" />
-
+          
           <motion.div
             key={currentStep} 
-            initial={{ opacity: 0, x: currentStep > 0 ? 50 : -50 }} // RTL adjusted: next comes from left, previous from right
+            initial={{ opacity: 0, x: currentStep > 0 ? 50 : -50 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: currentStep > 0 ? -50 : 50 }} // RTL adjusted
+            exit={{ opacity: 0, x: currentStep > 0 ? -50 : 50 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
           >
              <CurrentComponent
                 errors={errors} 
                 {...(shouldAutoAdvance && { onNext: handleNext })}
-                {...steps[currentStep].props}
+                {...steps[currentStep].props} // Pass props like carTypes here
                 autoFocus={['firstName', 'phoneNumber', 'location'].includes(steps[currentStep].id) && steps[currentStep].id !== 'location'}
              />
           </motion.div>
 
-
         <div className="flex justify-between items-center mt-8 pt-4 border-t border-white/20 dark:border-black/20 relative">
-           {/* Previous button on the right for RTL */}
            <Button
              type="button"
              onClick={handlePrevious}
-             disabled={currentStep === 0}
-             className="glass-button disabled:opacity-50 disabled:cursor-not-allowed absolute right-0" 
+             disabled={currentStep === 0 || isSubmitting}
+             className="glass-button disabled:opacity-50 disabled:cursor-not-allowed absolute left-0" 
              aria-label="الخطوة السابقة"
            >
-             <ArrowLeft className="h-5 w-5 transform scale-x-[-1]" /> {/* Icon visually points left for "previous" in RTL */}
+             <ArrowLeft className="h-5 w-5" />
            </Button>
 
-           <div className="flex-grow"></div> {/* Spacer */}
+           <div className="flex-grow"></div>
 
-            {/* Next/Submit button in the center */}
            <div className="flex justify-center flex-grow">
              {currentStep === steps.length - 1 ? (
                <Button
                  type="submit"
                  disabled={isSubmitting}
-                 className="glass-button bg-primary/80 hover:bg-primary text-primary-foreground px-6 py-3 text-lg font-semibold shadow-lg hover:shadow-xl active:scale-95"
-                 aria-label="تأكيد وإرسال عبر واتساب"
+                 className="glass-button bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 text-lg font-semibold shadow-lg hover:shadow-xl active:scale-95"
+                 aria-label="تأكيد وإرسال الطلب"
                >
-                 {isSubmitting ? "جاري المعالجة..." : "تأكيد وإرسال"}
+                 {isSubmitting ? "جاري الإرسال..." : "تأكيد وإرسال"}
                </Button>
              ) : (
                !shouldAutoAdvance && (
                   <Button
                     type="button"
                     onClick={handleNext}
-                    className="glass-button bg-accent/80 hover:bg-accent text-accent-foreground" 
-                    aria-label={isPhoneNumberStep ? "التأكيد والمتابعة لملخص الطلب" : "الخطوة التالية"}
+                    disabled={isSubmitting}
+                    className="glass-button bg-accent hover:bg-accent/90 text-accent-foreground" 
+                    aria-label={isPhoneNumberStep ? "التأكيد والمتابعة لملخص الطلب" : "التالي"}
                   >
                     {isPhoneNumberStep ? "التأكيد والمتابعة" : "التالي"}
                   </Button>
@@ -315,9 +352,8 @@ const BookingForm: FC = () => {
              )}
            </div>
 
-           <div className="flex-grow"></div> {/* Spacer */}
-           {/* Placeholder for the left side to balance, or keep empty if previous is on right */}
-            <div className="w-10 h-10"></div> {/* Adjust width as needed to balance the previous button */}
+           <div className="flex-grow"></div>
+           <div className="w-10 h-10"></div> 
         </div>
       </form>
     </FormProvider>
@@ -325,4 +361,3 @@ const BookingForm: FC = () => {
 };
 
 export default BookingForm;
-

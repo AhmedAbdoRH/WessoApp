@@ -8,45 +8,71 @@ body {
 
 @layer base {
   :root {
-    /* Dark theme variables adjusted for black/brown gradient */
-    --background: 20 14.3% 4.1%; /* Dark base */
-    --foreground: 30 10% 95%; /* Lighter foreground for dark bg */
-    --card: 24 9.8% 10%; /* Dark translucent card */
-    --card-foreground: 30 10% 95%; /* Lighter card text */
-    --popover: 20 14.3% 4.1%; /* Dark translucent popover */
-    --popover-foreground: 30 10% 95%;
-    --primary: 15 80% 55%; /* Orange-Red */
+    /* Light Theme variables - update as per style guidelines */
+    --background-light: 210 40% 98%; /* Light Blue base */
+    --foreground-light: 210 40% 10%; /* Darker foreground for light bg */
+    --card-light: 0 0% 100%; /* White card */
+    --card-foreground-light: 210 40% 10%;
+    --popover-light: 0 0% 100%;
+    --popover-foreground-light: 210 40% 10%;
+    --primary-light: 173 58% 44%; /* Teal accent */
+    --primary-foreground-light: 0 0% 100%; /* White */
+    --secondary-light: 210 40% 90%; /* Lighter secondary */
+    --secondary-foreground-light: 173 50% 30%;
+    --muted-light: 210 40% 90%;
+    --muted-foreground-light: 210 30% 50%;
+    --accent-light: 173 58% 44%; /* Teal */
+    --accent-foreground-light: 0 0% 100%;
+    --destructive-light: 0 84.2% 60.2%; /* Light red */
+    --destructive-foreground-light: 0 0% 98%;
+    --border-light: 210 40% 85%;
+    --input-light: 210 40% 85%;
+    --ring-light: 173 58% 44%;
+
+    /* Dark theme variables - existing, ensure they match style guidelines */
+    --background: 220 20% 7%; /* Dark Blue/Purple tint */
+    --foreground: 0 0% 95%;   /* Light text */
+    --card: 220 15% 12%;       /* Darker, slightly transparent card */
+    --card-foreground: 0 0% 95%;
+    --popover: 220 20% 7%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 173 58% 44%; /* Teal - Accent color */
     --primary-foreground: 0 0% 100%; /* White */
-    --secondary: 12 6.5% 15.1%; /* Darker secondary */
-    --secondary-foreground: 30 10% 95%;
-    --muted: 12 6.5% 15.1%;
-    --muted-foreground: 30 5.4% 70%; /* Adjusted muted foreground */
-    --accent: 174 40% 70%; /* Lighter Teal for accent - kept as is, user might want to change this */
-    --accent-foreground: 10 10% 10%; /* Darker accent text */
-    --destructive: 0 62.8% 30.6%; /* Dark red */
-    --destructive-foreground: 0 0% 98%; /* Light text on destructive */
-    --border: 30 6.5% 25.1%; /* Slightly lighter border for contrast */
-    --input: 30 6.5% 20.1%; /* Slightly lighter input bg */
-    --ring: 15 80% 55%; /* Orange-Red for focus rings */
+    --secondary: 220 15% 18%; /* Darker secondary */
+    --secondary-foreground: 0 0% 95%;
+    --muted: 220 15% 18%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 173 58% 44%; /* Teal */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 70% 50%; /* Darker red */
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 15% 25%;    /* Slightly lighter border for contrast */
+    --input: 220 15% 20%;     /* Slightly lighter input bg */
+    --ring: 173 58% 44%; /* Teal for focus rings */
+    
+    --radius: 0.75rem; /* Rounded corners */
+
+    /* Chart colors (can be adjusted) */
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
-    --radius: 0.75rem; /* More rounded corners */
 
-    /* Keep sidebar distinct if needed, or align with main dark theme */
-    --sidebar-background: 24 9.8% 10%; /* Match card background */
-    --sidebar-foreground: 30 10% 95%; /* Match card foreground */
-    --sidebar-primary: 15 80% 55%; /* Orange-Red */
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 12 6.5% 15.1%; /* Match secondary */
-    --sidebar-accent-foreground: 30 10% 95%;
-    --sidebar-border: 30 6.5% 25.1%; /* Match border */
-    --sidebar-ring: 15 80% 55%; /* Orange-Red */
+    /* Sidebar specific (if needed, otherwise they inherit) */
+    --sidebar-background: hsl(var(--background));
+    --sidebar-foreground: hsl(var(--foreground));
+    --sidebar-primary: hsl(var(--primary));
+    --sidebar-primary-foreground: hsl(var(--primary-foreground));
+    --sidebar-accent: hsl(var(--secondary)); /* Or a specific sidebar accent */
+    --sidebar-accent-foreground: hsl(var(--secondary-foreground));
+    --sidebar-border: hsl(var(--border));
+    --sidebar-ring: hsl(var(--ring));
   }
 
-  /* Force dark theme for now based on user request */
+  /* Light theme application (if you have a theme switcher) */
+  /* .light { ... map to --*-light variables ... } */
+  /* Forcing dark theme as per current setup */
   .dark {
      /* Variables are already set above for the dark theme */
   }
@@ -57,37 +83,102 @@ body {
     @apply border-border;
   }
   body {
-    /* Apply the dark black/brown gradient */
-    /* Using Tailwind colors directly for the gradient */
-    @apply bg-gradient-to-br from-black via-yellow-950 to-stone-900 text-foreground;
-    /* Ensure dark mode class is applied if system preference is not dark */
-    /* Or force dark mode by adding 'dark' class to html tag in layout.tsx */
+    /* Light gradient background as per guidelines */
+    @apply bg-gradient-to-br from-[hsl(180,50%,80%)] via-[hsl(270,50%,85%)] to-[hsl(330,50%,90%)] text-foreground;
+    /* For dark mode, the html.dark selector will override */
+  }
+
+  html.dark body {
+    /* Dark gradient using primary dark theme colors */
+    @apply bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(220,18%,10%)] to-[hsl(220,22%,5%)] text-foreground;
   }
 }
 
 @layer components {
-  /* Adjust Glassmorphism for dark theme */
+  /* Glassmorphism card style */
   .glass-card {
-    @apply bg-stone-900/40 dark:bg-black/50 backdrop-blur-lg border border-stone-700/30 dark:border-white/10 rounded-lg shadow-xl p-6 sm:p-8 transition-all duration-300 hover:shadow-2xl;
-    /* Increased blur and shadow for dark theme */
+    @apply bg-white/30 dark:bg-card/50 backdrop-blur-lg border border-white/20 dark:border-border/30 rounded-2xl shadow-xl p-6 sm:p-8 transition-all duration-300 hover:shadow-2xl;
+    /* Increased rounding */
   }
 
-  /* Adjust Glassmorphism button style */
+  /* Glassmorphism button style */
   .glass-button {
-    @apply bg-stone-700/50 dark:bg-white/20 backdrop-blur-md border border-stone-600/40 dark:border-white/20 rounded-lg shadow-md text-foreground py-2 px-4 transition-all duration-300 hover:bg-stone-600/70 dark:hover:bg-white/30 hover:shadow-lg active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed;
+    @apply bg-white/40 dark:bg-white/10 backdrop-blur-md border border-white/30 dark:border-border/20 rounded-xl shadow-md text-foreground py-2.5 px-5 transition-all duration-300 hover:bg-white/60 dark:hover:bg-white/20 hover:shadow-lg active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed;
+    /* Increased rounding, adjusted padding */
+  }
+  .glass-button.bg-primary, .glass-button.bg-primary\/80 {
+    @apply text-primary-foreground;
+  }
+  .glass-button.bg-accent, .glass-button.bg-accent\/80 {
+    @apply text-accent-foreground;
   }
 
-   /* Adjust Glassmorphism input style */
+
+   /* Glassmorphism input style */
   .glass-input {
-    @apply bg-stone-800/50 dark:bg-black/40 backdrop-blur-sm border border-stone-700/30 dark:border-white/10 rounded-lg shadow-inner text-foreground placeholder-muted-foreground focus:ring-primary focus:border-primary focus:bg-stone-700/60 dark:focus:bg-black/50;
+    @apply bg-white/20 dark:bg-input/40 backdrop-blur-sm border border-white/20 dark:border-border/30 rounded-xl shadow-inner text-foreground placeholder-muted-foreground focus:ring-primary focus:border-primary focus:bg-white/30 dark:focus:bg-input/50;
+    /* Increased rounding */
    }
 
-  /* Adjust Glassmorphism radio button style */
-  .glass-radio {
-      @apply appearance-none w-5 h-5 rounded-full border-2 border-stone-600/70 dark:border-white/50 bg-stone-700/30 dark:bg-black/30 checked:bg-primary checked:border-transparent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background dark:focus:ring-offset-black focus:ring-primary cursor-pointer transition-all duration-200 backdrop-blur-sm;
+  /* Glassmorphism radio button style (visual only, actual radio is hidden) */
+  .glass-radio-card {
+      @apply glass-card p-4 cursor-pointer; /* Re-use glass-card for radio-like cards */
   }
    .glass-radio-label {
       @apply ml-2 text-sm font-medium text-foreground select-none cursor-pointer;
    }
 
+  /* Admin specific styles if needed */
+  .admin-section {
+    @apply glass-card mb-8;
+  }
+  .admin-section-title {
+    @apply text-2xl font-semibold text-foreground mb-6;
+  }
+  .admin-form label {
+    @apply block text-sm font-medium text-foreground mb-1;
+  }
+  .admin-form input[type="text"],
+  .admin-form input[type="url"],
+  .admin-form input[type="number"],
+  .admin-form select,
+  .admin-form textarea {
+    @apply glass-input w-full p-2.5 mb-3 text-base; /* Ensure inputs also get glass style and rounding */
+  }
+  .admin-form textarea {
+    @apply min-h-[100px];
+  }
+  .admin-form button[type="submit"] {
+    @apply glass-button bg-primary/80 hover:bg-primary text-primary-foreground;
+  }
+  .admin-item-list {
+    @apply space-y-3;
+  }
+  .admin-item {
+    @apply glass-card p-4 flex justify-between items-center bg-white/10 dark:bg-black/10; /* Subtle item background */
+  }
+  .admin-item-actions button {
+    @apply glass-button text-xs px-3 py-1.5 ml-2; /* Smaller buttons for actions */
+  }
+  .admin-item-actions button.text-destructive {
+    @apply border-destructive/50 hover:bg-destructive/20;
+  }
+  .admin-subtle-button {
+    @apply fixed bottom-4 right-4 p-3 bg-primary/70 text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-opacity duration-300 z-50 opacity-30 hover:opacity-100;
+  }
+
+}
+
+/* Ensure body background is applied correctly with html.dark */
+html:not(.dark) body {
+  @apply bg-gradient-to-br from-[hsl(180,50%,80%)] via-[hsl(270,50%,85%)] to-[hsl(330,50%,90%)] text-black;
+}
+html.dark body {
+  /* Using the dark theme variables from :root */
+  @apply bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(220,18%,10%)] to-[hsl(220,22%,5%)] text-foreground;
+}
+
+/* Override ShadCN default input background for our glass style */
+.dark .input, .input {
+  background-color: transparent !important; /* Important to override ShadCN if it sets explicit bg */
 }
