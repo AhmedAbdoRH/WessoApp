@@ -104,10 +104,9 @@ body {
     font-family: 'Cairo', sans-serif; /* Ensure Cairo font is applied */
   }
 
-  /* Light theme body background with Lemon Yellow to Mint Green gradient */
+  /* Light theme body background with Lemon Yellow to Mint Green gradient, with more color saturation */
   html.light body {
-    /* Gradient from a light lemon yellow to a light mint green */
-    @apply bg-gradient-to-br from-[hsl(52,100%,97%)] via-[hsl(100,100%,97%)] to-[hsl(160,100%,97%)] text-foreground;
+    @apply bg-gradient-to-br from-[hsl(52,90%,92%)] via-[hsl(95,80%,93%)] to-[hsl(160,80%,92%)] text-foreground;
   }
 }
 
