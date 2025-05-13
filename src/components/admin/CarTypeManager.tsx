@@ -30,12 +30,13 @@ import {
 // Schema for form data handling FileList or existing string URL
 const carTypeFormSchema = z.object({
   label: z.string().min(1, 'اسم النوع (بالعربية) مطلوب').max(100, 'الاسم طويل جداً'),
-  imageUrlInput: z.instanceof(FileList).optional(), // For new file uploads
+  imageUrlInput: z.any().optional(), // Changed from z.instanceof(FileList)
   existingImageUrl: z.string().url().optional().or(z.literal('')), // For displaying/keeping existing image
   existingPublicId: z.string().optional().or(z.literal('')), // For Cloudinary public_id
   order: z.coerce.number().min(0, 'الترتيب يجب أن يكون 0 أو أكبر'),
 }).refine(data => {
-  const hasNewFile = data.imageUrlInput instanceof FileList && data.imageUrlInput.length > 0;
+  // FileList is a browser API, check for its existence before using instanceof
+  const hasNewFile = typeof FileList !== 'undefined' && data.imageUrlInput instanceof FileList && data.imageUrlInput.length > 0;
   const hasExistingImage = !!data.existingImageUrl;
   return hasNewFile || hasExistingImage;
 }, {
@@ -79,7 +80,7 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
 
 
   useEffect(() => {
-    if (watchedImageUrlInput && watchedImageUrlInput.length > 0) {
+    if (watchedImageUrlInput && watchedImageUrlInput.length > 0 && watchedImageUrlInput[0] instanceof File) {
       const file = watchedImageUrlInput[0];
       const previewUrl = URL.createObjectURL(file);
       setImagePreviewUrl(previewUrl);
@@ -136,7 +137,7 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
   const onSubmit: SubmitHandler<CarTypeFormData> = async (data) => {
     startTransition(async () => {
       try {
-        const imageFile = data.imageUrlInput && data.imageUrlInput.length > 0 ? data.imageUrlInput[0] : null;
+        const imageFile = data.imageUrlInput && data.imageUrlInput.length > 0 && data.imageUrlInput[0] instanceof File ? data.imageUrlInput[0] : null;
 
         if (editingCarType) {
           // For updates, imageFile can be null if user doesn't change it
@@ -273,7 +274,7 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
             <input type="hidden" {...register('existingImageUrl')} />
             <input type="hidden" {...register('existingPublicId')} />
             {errors.imageUrlInput && <p className="text-sm text-destructive mt-1">{errors.imageUrlInput.message}</p>}
-             {editingCarType && !imagePreviewUrl && !watchedImageUrlInput?.length && (
+             {editingCarType && !imagePreviewUrl && !(watchedImageUrlInput && watchedImageUrlInput.length > 0) && (
               <p className="text-xs text-muted-foreground mt-1">اترك حقل الملف فارغًا للاحتفاظ بالصورة الحالية: {editingCarType.label}.</p>
             )}
           </div>

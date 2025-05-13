@@ -30,13 +30,14 @@ import {
 
 const carModelFormSchema = z.object({
   label: z.string().min(1, 'اسم الموديل (بالعربية) مطلوب').max(100, 'الاسم طويل جداً'),
-  imageUrlInput: z.instanceof(FileList).optional(),
+  imageUrlInput: z.any().optional(), // Changed from z.instanceof(FileList)
   existingImageUrl: z.string().url().optional().or(z.literal('')),
   existingPublicId: z.string().optional().or(z.literal('')), // For Cloudinary public_id
   type: z.string().min(1, 'يجب اختيار نوع السيارة'),
   order: z.coerce.number().min(0, 'الترتيب يجب أن يكون 0 أو أكبر'),
 }).refine(data => {
-  const hasNewFile = data.imageUrlInput instanceof FileList && data.imageUrlInput.length > 0;
+  // FileList is a browser API, check for its existence before using instanceof
+  const hasNewFile = typeof FileList !== 'undefined' && data.imageUrlInput instanceof FileList && data.imageUrlInput.length > 0;
   const hasExistingImage = !!data.existingImageUrl;
   return hasNewFile || hasExistingImage;
 }, {
@@ -80,7 +81,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
   const { ref: imageInputRegisterRef, ...imageInputProps } = register('imageUrlInput');
 
   useEffect(() => {
-    if (watchedImageUrlInput && watchedImageUrlInput.length > 0) {
+    if (watchedImageUrlInput && watchedImageUrlInput.length > 0 && watchedImageUrlInput[0] instanceof File) {
       const file = watchedImageUrlInput[0];
       const previewUrl = URL.createObjectURL(file);
       setImagePreviewUrl(previewUrl);
@@ -138,7 +139,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
   const onSubmit: SubmitHandler<CarModelFormData> = async (data) => {
     startTransition(async () => {
       try {
-        const imageFile = data.imageUrlInput && data.imageUrlInput.length > 0 ? data.imageUrlInput[0] : null;
+        const imageFile = data.imageUrlInput && data.imageUrlInput.length > 0 && data.imageUrlInput[0] instanceof File ? data.imageUrlInput[0] : null;
 
         if (editingCarModel) {
           if (!imageFile && !data.existingImageUrl) {
@@ -282,7 +283,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
             <input type="hidden" {...register('existingImageUrl')} />
             <input type="hidden" {...register('existingPublicId')} />
             {errors.imageUrlInput && <p className="text-sm text-destructive mt-1">{errors.imageUrlInput.message}</p>}
-            {editingCarModel && !imagePreviewUrl && !watchedImageUrlInput?.length && (
+            {editingCarModel && !imagePreviewUrl && !(watchedImageUrlInput && watchedImageUrlInput.length >0) && (
               <p className="text-xs text-muted-foreground mt-1">اترك حقل الملف فارغًا للاحتفاظ بالصورة الحالية: {editingCarModel.label}.</p>
             )}
           </div>
