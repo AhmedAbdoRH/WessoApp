@@ -107,7 +107,7 @@ const BookingForm: FC = () => {
   // --- Memoization Hooks ---
   const steps: StepDefinition[] = useMemo(() => [
     { id: 'carType', component: CarTypeSelection, validationFields: ['carType'], autoAdvance: true, props: { carTypes: carTypes } },
-    { id: 'carModel', component: CarModelSelection, validationFields: ['carModel'], autoAdvance: false, props: { allCarTypes: carTypes } },
+    { id: 'carModel', component: CarModelSelection, validationFields: ['carModel'], autoAdvance: true, props: { allCarTypes: carTypes } }, // autoAdvance: true
     { id: 'passengers', component: PassengerSelection, validationFields: ['passengers'], autoAdvance: true, props: { selectionType: 'passengers' } },
     { id: 'bags', component: PassengerSelection, validationFields: ['bags'], autoAdvance: true, props: { selectionType: 'bags' } },
     { id: 'location', component: LocationSelection, validationFields: ['pickupLocation.address', 'pickupLocation.coordinates', 'dropoffLocation.address', 'dropoffLocation.coordinates'], props: { autoFocus: true } },
@@ -255,8 +255,12 @@ const BookingForm: FC = () => {
        const pickupMapLink = getGoogleMapsLink(data.pickupLocation.coordinates) || getGoogleMapsLinkFromAddress(data.pickupLocation.address);
        const dropoffMapLink = getGoogleMapsLink(data.dropoffLocation.coordinates) || getGoogleMapsLinkFromAddress(data.dropoffLocation.address);
        
+       const appConfig = await getAppConfig();
+       const appName = appConfig?.appName || "ClearRide";
+
+
        const message = `
-*طلب حجز جديد من ClearRide:*
+*طلب حجز جديد من ${appName}:*
 -----------------------------
 *نوع السيارة:* ${carTypeLabel}
 *موديل السيارة:* ${carModelLabel} 
@@ -278,7 +282,7 @@ const BookingForm: FC = () => {
        const whatsappUrl = `https://wa.me/${targetPhoneNumber}?text=${encodedMessage}`;
        
        window.open(whatsappUrl, '_blank');
-       // methods.reset(); setCurrentStep(0);
+       // methods.reset(); setCurrentStep(0); // Optionally reset form
 
      } catch (error) {
        console.error("Error submitting booking:", error);

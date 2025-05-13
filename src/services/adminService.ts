@@ -33,10 +33,10 @@ export async function getAppConfig(): Promise<AppConfig | null> {
     if (docSnap.exists()) {
       return docSnap.data() as AppConfig;
     }
-    return null;
+    // Return default config if none exists
+    return { appName: 'ClearRide', logoUrl: '' };
   } catch (error) {
     console.error('Error fetching app config:', error);
-    // Propagate a simpler error
     if (error instanceof Error) {
         throw new Error(`Failed to fetch app config: ${error.message}`);
     }
@@ -74,13 +74,6 @@ function generateSignature(paramsToSign: Record<string, string | number>, apiSec
 }
 
 async function uploadImageToCloudinary(file: File, folder: string): Promise<{ secure_url: string; public_id: string }> {
-  // Debug: Log environment variables status (DON'T log secrets themselves)
-  console.log("Cloudinary Env Vars Status in uploadImageToCloudinary:", {
-    name: process.env.CLOUDINARY_CLOUD_NAME ? "loaded" : "MISSING",
-    key: process.env.CLOUDINARY_API_KEY ? "loaded" : "MISSING",
-    secret_present: process.env.CLOUDINARY_API_SECRET ? "yes" : "NO",
-  });
-
   const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
   const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY;
   const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
@@ -95,11 +88,15 @@ async function uploadImageToCloudinary(file: File, folder: string): Promise<{ se
     throw new Error('فشل تحميل الصورة: ملف غير صالح مقدم للتحميل.');
   }
 
-
   const timestamp = Math.round(new Date().getTime() / 1000);
-  const paramsToSign: Record<string, string | number> = { 
+  // For signed uploads, 'public_id' can be specified if you want to control it,
+  // or let Cloudinary generate it. 'folder' is also a good parameter to sign.
+  // For maximum security, sign all parameters you intend to send, except 'file', 'api_key', and 'signature'.
+  const paramsToSign: Record<string, string | number> = {
     folder: folder,
     timestamp: timestamp,
+    // Example: eager: 'w_400,h_300,c_pad|w_260,h_200,c_crop', // if you have specific transformations
+    // Example: unique_filename: 'true', // To avoid overwriting based on filename
   };
   const signature = generateSignature(paramsToSign, CLOUDINARY_API_SECRET);
 
@@ -109,6 +106,7 @@ async function uploadImageToCloudinary(file: File, folder: string): Promise<{ se
   formData.append('timestamp', String(timestamp));
   formData.append('signature', signature);
   formData.append('folder', folder);
+  // Add any other parameters you signed above, e.g., formData.append('eager', paramsToSign.eager);
 
   try {
     const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
@@ -116,14 +114,7 @@ async function uploadImageToCloudinary(file: File, folder: string): Promise<{ se
       body: formData,
     });
     
-    let result;
-    try {
-        result = await response.json();
-    } catch (e) {
-        console.error('Cloudinary response not JSON:', await response.text());
-        throw new Error('فشل تحميل الصورة: استجابة غير صالحة من خادم الصور.');
-    }
-
+    const result = await response.json();
 
     if (!response.ok || result.error) {
       console.error('Cloudinary API Error (upload):', result.error || `Status: ${response.status}`);
@@ -136,7 +127,6 @@ async function uploadImageToCloudinary(file: File, folder: string): Promise<{ se
     throw new Error('فشل تحميل الصورة: استجابة غير متوقعة من خادم صور Cloudinary.');
   } catch (error: any) {
     console.error("Full Cloudinary Upload Error details:", error);
-    // Ensure a simple error message is thrown
     const errorMessage = error instanceof Error ? error.message : 'خطأ غير متوقع أثناء الاتصال بخادم صور Cloudinary.';
     throw new Error(errorMessage);
   }
@@ -161,6 +151,7 @@ async function deleteImageFromCloudinary(publicId: string): Promise<void> {
   const paramsToSign: Record<string, string | number> = { 
     public_id: publicId,
     timestamp: timestamp,
+    // invalidate: true, // Optionally invalidate CDN cache
   };
   const signature = generateSignature(paramsToSign, CLOUDINARY_API_SECRET);
 
@@ -169,6 +160,7 @@ async function deleteImageFromCloudinary(publicId: string): Promise<void> {
   formData.append('api_key', CLOUDINARY_API_KEY);
   formData.append('timestamp', String(timestamp));
   formData.append('signature', signature);
+  // formData.append('invalidate', 'true'); // if signed
 
   try {
     const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/destroy`, {
@@ -176,13 +168,7 @@ async function deleteImageFromCloudinary(publicId: string): Promise<void> {
       body: formData,
     });
     
-    let result;
-    try {
-        result = await response.json();
-    } catch (e) {
-        console.error('Cloudinary delete response not JSON:', await response.text());
-        throw new Error('فشل حذف الصورة: استجابة غير صالحة من خادم الصور عند الحذف.');
-    }
+    const result = await response.json();
 
     if (result.result !== 'ok' && result.result !== 'not found') {
       console.error('Cloudinary API Error (delete):', result);
@@ -232,7 +218,7 @@ export async function addCarTypeAdmin(
   } catch (error) {
     console.error("Error in addCarTypeAdmin:", error);
     if (error instanceof Error) {
-        throw error; // Re-throw the original error to be caught by client
+        throw error; 
     }
     throw new Error('An unknown error occurred while adding car type.');
   }
@@ -243,32 +229,36 @@ export async function updateCarTypeAdmin(
   data: {
     label?: string;
     order?: number;
-    imageUrlInput?: File | null;
-    currentImageUrl?: string;
-    currentPublicId?: string;
+    imageUrlInput?: File | null; // File for new upload, null to remove image, undefined to keep current
+    currentImageUrl?: string; // Needed if not changing image
+    currentPublicId?: string; // Needed if not changing image or for deletion
    }
 ): Promise<void> {
   try {
     let newImageUrl = data.currentImageUrl;
     let newPublicId = data.currentPublicId;
 
-    const { imageUrlInput, currentImageUrl, currentPublicId, ...updateDataFromForm } = data;
+    const { imageUrlInput, ...updateDataFromForm } = data; // Separate imageUrlInput
 
-    if (imageUrlInput) { 
-      if (currentPublicId) {
-        await deleteImageFromCloudinary(currentPublicId);
+    if (imageUrlInput instanceof File) { // A new file is provided
+      if (data.currentPublicId) { // Delete old image if it exists
+        await deleteImageFromCloudinary(data.currentPublicId);
       }
       const uploadResult = await uploadImageToCloudinary(imageUrlInput, 'car_types');
       newImageUrl = uploadResult.secure_url;
       newPublicId = uploadResult.public_id;
-    } else if (imageUrlInput === null && currentPublicId) {
-      await deleteImageFromCloudinary(currentPublicId);
+    } else if (imageUrlInput === null && data.currentPublicId) { // Explicitly remove image
+      await deleteImageFromCloudinary(data.currentPublicId);
       newImageUrl = '';
       newPublicId = '';
     }
+    // If imageUrlInput is undefined, image remains unchanged.
   
     const docRef = doc(db, CAR_TYPES_COLLECTION, id);
-    const updatePayload: Partial<Omit<CarTypeOptionAdmin, 'id'>> = { ...updateDataFromForm };
+    const updatePayload: Partial<Omit<CarTypeOptionAdmin, 'id' | 'currentImageUrl' | 'currentPublicId'>> = { 
+        ...(updateDataFromForm.label && { label: updateDataFromForm.label }),
+        ...(updateDataFromForm.order !== undefined && { order: updateDataFromForm.order }),
+     };
 
     if (updateDataFromForm.label) {
       const currentDoc = await getDoc(docRef);
@@ -277,7 +267,8 @@ export async function updateCarTypeAdmin(
       }
     }
 
-    if (newImageUrl !== currentImageUrl || newPublicId !== currentPublicId) {
+    // Only update image fields if they've changed
+    if (newImageUrl !== data.currentImageUrl || newPublicId !== data.currentPublicId) {
       updatePayload.imageUrl = newImageUrl;
       updatePayload.publicId = newPublicId;
     }
@@ -340,7 +331,12 @@ export async function deleteCarTypeAdmin(id: string): Promise<void> {
 // --- Car Models ---
 export async function getCarModelsAdmin(): Promise<CarModelOptionAdmin[]> {
   try {
-    const q = query(collection(db, CAR_MODELS_COLLECTION), orderBy('order', 'asc'), orderBy('type', 'asc'));
+    // Firestore composite queries require an index. 
+    // If you get an error message about a missing index, create it in the Firebase console.
+    // The error message usually provides a direct link to create the index.
+    // For `orderBy('order', 'asc'), orderBy('type', 'asc')` on `carModels`, 
+    // you'll need a composite index on (order ASC, type ASC).
+    const q = query(collection(db, CAR_MODELS_COLLECTION), orderBy('type', 'asc'), orderBy('order', 'asc'));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as CarModelOptionAdmin));
   } catch (error) {
@@ -395,23 +391,27 @@ export async function updateCarModelAdmin(
     let newImageUrl = data.currentImageUrl;
     let newPublicId = data.currentPublicId;
 
-    const { imageUrlInput, currentImageUrl, currentPublicId, ...updateDataFromForm } = data;
+    const { imageUrlInput, ...updateDataFromForm } = data;
 
-    if (imageUrlInput) { 
-      if (currentPublicId) {
-        await deleteImageFromCloudinary(currentPublicId);
+    if (imageUrlInput instanceof File) { 
+      if (data.currentPublicId) {
+        await deleteImageFromCloudinary(data.currentPublicId);
       }
       const uploadResult = await uploadImageToCloudinary(imageUrlInput, `car_models/${updateDataFromForm.type || 'general'}`);
       newImageUrl = uploadResult.secure_url;
       newPublicId = uploadResult.public_id;
-    } else if (imageUrlInput === null && currentPublicId) {
-      await deleteImageFromCloudinary(currentPublicId);
+    } else if (imageUrlInput === null && data.currentPublicId) {
+      await deleteImageFromCloudinary(data.currentPublicId);
       newImageUrl = '';
       newPublicId = '';
     }
 
     const docRef = doc(db, CAR_MODELS_COLLECTION, id);
-    const updatePayload: Partial<Omit<CarModelOptionAdmin, 'id'>> = { ...updateDataFromForm };
+    const updatePayload: Partial<Omit<CarModelOptionAdmin, 'id' | 'currentImageUrl' | 'currentPublicId'>> = {
+        ...(updateDataFromForm.label && { label: updateDataFromForm.label }),
+        ...(updateDataFromForm.type && { type: updateDataFromForm.type }),
+        ...(updateDataFromForm.order !== undefined && { order: updateDataFromForm.order }),
+    };
 
     if (updateDataFromForm.label) {
       const currentDoc = await getDoc(docRef);
@@ -420,7 +420,7 @@ export async function updateCarModelAdmin(
       }
     }
 
-    if (newImageUrl !== currentImageUrl || newPublicId !== currentPublicId) {
+    if (newImageUrl !== data.currentImageUrl || newPublicId !== data.currentPublicId) {
       updatePayload.imageUrl = newImageUrl;
       updatePayload.publicId = newPublicId;
     }
@@ -469,13 +469,11 @@ export async function getCarTypesForBooking(): Promise<Omit<CarTypeOptionAdmin, 
         value: data.value, 
         label: data.label,
         imageUrl: data.imageUrl,
-        // dataAiHint is not typically managed by admin, but keep if present
         ...(data.dataAiHint && { dataAiHint: data.dataAiHint }),
       } as Omit<CarTypeOptionAdmin, 'order' | 'id' | 'publicId'>;
     });
   } catch (error) {
      console.error("Error in getCarTypesForBooking:", error);
-     // For client-side functions, returning empty array or a specific error structure might be better than throwing
      return [];
   }
 }
@@ -500,6 +498,8 @@ export async function getCarModelsForBooking(carTypeValue: string): Promise<Omit
     });
   } catch (error) {
     console.error("Error in getCarModelsForBooking (type: " + carTypeValue + "):", error);
+    // This function is called client-side, so returning an empty array might be better
+    // than throwing an error that could break the UI.
     return [];
   }
 }
