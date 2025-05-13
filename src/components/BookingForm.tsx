@@ -268,7 +268,7 @@ const BookingForm: FC = () => {
      // Attempt to save customer contact info, regardless of main booking save success
      try {
         const contactData = {
-            firstName: data.firstName,
+            firstName: data.firstName, // Include firstName here
             phoneNumber: data.phoneNumber,
             createdAt: new Date().toISOString(),
         };
@@ -276,12 +276,6 @@ const BookingForm: FC = () => {
         console.log("Customer contact saved to Firestore.");
     } catch (contactError) {
         console.error("Error saving customer contact to Firestore:", contactError);
-        // Optional: Notify user if contact saving fails
-        // toast({
-        //   title: "خطأ في حفظ بيانات الاتصال",
-        //   description: "لم نتمكن من حفظ معلومات الاتصال الخاصة بك.",
-        //   variant: "destructive",
-        // });
     }
      
     const pickupMapLink = getGoogleMapsLinkFromAddress(data.pickupLocation.address);
@@ -406,6 +400,7 @@ ${dropoffMapLink ? `${dropoffMapLink}` : ''}
 export default BookingForm;
 
       
+
 
 
 

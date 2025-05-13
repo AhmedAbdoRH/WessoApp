@@ -7,7 +7,8 @@ import { useToast } from '@/hooks/use-toast';
 import type { CustomerContactAdmin } from '@/types/admin';
 import { deletePhoneNumberAdmin, getPhoneNumbersAdmin } from '@/services/adminService'; // Server Actions
 import { useRouter } from 'next/navigation';
-import { Trash2, RefreshCw } from 'lucide-react';
+import { Trash2, RefreshCw, Download } from 'lucide-react'; // Added Download icon
+import { format } from 'date-fns'; // For CSV date formatting
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,7 +41,6 @@ export function PhoneNumberManager({ initialPhoneNumbers }: PhoneNumberManagerPr
       try {
         await deletePhoneNumberAdmin(phoneNumberEntry.id);
         toast({ title: 'تم الحذف بنجاح', description: `تم حذف رقم الهاتف: ${phoneNumberEntry.phoneNumber}` });
-        // Refresh the list from the server to ensure consistency
         await fetchPhoneNumbers();
       } catch (error) {
         console.error('Failed to delete phone number:', error);
@@ -58,7 +58,7 @@ export function PhoneNumberManager({ initialPhoneNumbers }: PhoneNumberManagerPr
     try {
       const updatedPhoneNumbers = await getPhoneNumbersAdmin();
       setPhoneNumbers(updatedPhoneNumbers);
-      router.refresh(); // To ensure server components dependent on this data also refresh if any
+      router.refresh(); 
     } catch (error) {
       toast({
         title: 'خطأ في تحديث القائمة',
@@ -70,14 +70,52 @@ export function PhoneNumberManager({ initialPhoneNumbers }: PhoneNumberManagerPr
     }
   };
 
+  const exportToCsv = () => {
+    if (phoneNumbers.length === 0) {
+      toast({ title: "لا توجد بيانات للتصدير", description: "قائمة أرقام الهواتف فارغة.", variant: "default" });
+      return;
+    }
+
+    const csvHeaders = ["الاسم الأول", "رقم الهاتف", "تاريخ الإضافة"];
+    const csvRows = phoneNumbers.map(entry => [
+      entry.firstName,
+      entry.phoneNumber,
+      format(new Date(entry.createdAt), "yyyy-MM-dd HH:mm:ss") // Format date
+    ]);
+
+    let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // \uFEFF for BOM to support Arabic in Excel
+    csvContent += csvHeaders.join(",") + "\r\n";
+    csvRows.forEach(rowArray => {
+      const row = rowArray.map(field => `"${String(field).replace(/"/g, '""')}"`).join(","); // Handle commas and quotes in fields
+      csvContent += row + "\r\n";
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "customer_contacts.csv");
+    document.body.appendChild(link); 
+    link.click();
+    document.body.removeChild(link);
+
+    toast({ title: "تم التصدير بنجاح", description: "تم تنزيل ملف CSV بنجاح.", variant: "default" });
+  };
+
+
   return (
     <div className="space-y-6">
-       <div className="flex justify-between items-center">
+       <div className="flex flex-wrap justify-between items-center gap-4">
         <h3 className="text-xl font-semibold text-foreground">قائمة أرقام هواتف العملاء</h3>
-        <Button onClick={fetchPhoneNumbers} disabled={isFetching || isPending} variant="outline" size="sm" className="glass-button">
-          <RefreshCw className={`ml-2 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
-          تحديث القائمة
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={fetchPhoneNumbers} disabled={isFetching || isPending} variant="outline" size="sm" className="glass-button">
+            <RefreshCw className={`ml-2 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+            تحديث القائمة
+          </Button>
+           <Button onClick={exportToCsv} disabled={phoneNumbers.length === 0 || isPending} variant="outline" size="sm" className="glass-button bg-primary/80 hover:bg-primary text-primary-foreground">
+            <Download className="ml-2 h-4 w-4" />
+            تصدير إلى CSV
+          </Button>
+        </div>
       </div>
       {phoneNumbers.length === 0 ? (
         <p className="text-muted-foreground">لا توجد أرقام هواتف مسجلة حالياً.</p>
