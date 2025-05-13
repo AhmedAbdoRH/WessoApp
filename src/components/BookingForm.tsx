@@ -6,7 +6,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, FormProvider, type SubmitHandler } from "react-hook-form";
 import * as z from "zod";
-import { motion } from "framer-motion"; // Kept motion for transitions
+import { motion } from "framer-motion"; 
 import { ArrowLeft } from 'lucide-react'; 
 import { db } from "@/lib/firebase"; 
 import { collection, addDoc } from "firebase/firestore";
@@ -21,7 +21,7 @@ import { OrderSummary } from "./steps/OrderSummary";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { getCarTypesForBooking, getCarModelsForBooking } from '@/services/adminService'; // Import service
+import { getCarTypesForBooking, getCarModelsForBooking } from '@/services/adminService'; 
 import type { CarTypeOptionAdmin } from '@/types/admin';
 
 
@@ -50,7 +50,6 @@ export type BookingFormData = z.infer<typeof bookingSchema>;
 type StepFieldName = Exclude<keyof BookingFormData, 'fullName'> | 'firstName' | `${keyof Pick<BookingFormData, 'pickupLocation' | 'dropoffLocation'>}.${keyof BookingFormData['pickupLocation']}`;
 
 
-// Step definition will be memoized after fetching initial data
 type StepDefinition = { 
   id: string; 
   component: FC<any>; 
@@ -61,11 +60,30 @@ type StepDefinition = {
 
 
 const BookingForm: FC = () => {
+  // --- State Hooks ---
   const [currentStep, setCurrentStep] = useState(0);
-  const [carTypes, setCarTypes] = useState<Omit<CarTypeOptionAdmin, 'order' | 'dataAiHint'>[]>([]);
+  const [carTypes, setCarTypes] = useState<Omit<CarTypeOptionAdmin, 'order' | 'id' | 'publicId' | 'dataAiHint'>[]>([]);
   const [isLoadingInitialData, setIsLoadingInitialData] = useState(true);
+  
+  // --- Custom Hooks ---
   const { toast } = useToast();
+  const methods = useForm<BookingFormData>({
+    resolver: zodResolver(bookingSchema),
+    mode: "onChange", 
+    defaultValues: {
+      carType: '',
+      carModel: '',
+      passengers: undefined as number | undefined,
+      bags: undefined as number | undefined,      
+      pickupLocation: { address: '', coordinates: undefined },
+      dropoffLocation: { address: '', coordinates: undefined },
+      firstName: '', 
+      phoneNumber: '',
+    },
+  });
+  const { handleSubmit, trigger, formState: { errors, isSubmitting }, watch } = methods;
 
+  // --- Effect Hooks ---
   useEffect(() => {
     async function fetchInitialData() {
       try {
@@ -84,41 +102,40 @@ const BookingForm: FC = () => {
       }
     }
     fetchInitialData();
-  }, [toast]);
+  }, [toast]); // Added toast to dependency array
   
-
-  const methods = useForm<BookingFormData>({
-    resolver: zodResolver(bookingSchema),
-    mode: "onChange", 
-    defaultValues: {
-      carType: '',
-      carModel: '',
-      passengers: undefined as number | undefined,
-      bags: undefined as number | undefined,      
-      pickupLocation: { address: '', coordinates: undefined },
-      dropoffLocation: { address: '', coordinates: undefined },
-      firstName: '', 
-      phoneNumber: '',
-    },
-  });
-
-  const { handleSubmit, trigger, formState: { errors, isSubmitting }, watch } = methods;
-  
-  // Memoize steps definition based on fetched carTypes
+  // --- Memoization Hooks ---
   const steps: StepDefinition[] = useMemo(() => [
-    { id: 'carType', component: CarTypeSelection, validationFields: ['carType'], autoAdvance: true, props: { carTypes: carTypes /* pass fetched types */ } },
-    { id: 'carModel', component: CarModelSelection, validationFields: ['carModel'], autoAdvance: true, props: { allCarTypes: carTypes /* pass for name resolution */ } },
+    { id: 'carType', component: CarTypeSelection, validationFields: ['carType'], autoAdvance: true, props: { carTypes: carTypes } },
+    { id: 'carModel', component: CarModelSelection, validationFields: ['carModel'], autoAdvance: true, props: { allCarTypes: carTypes } },
     { id: 'passengers', component: PassengerSelection, validationFields: ['passengers'], autoAdvance: true, props: { selectionType: 'passengers' } },
     { id: 'bags', component: PassengerSelection, validationFields: ['bags'], autoAdvance: true, props: { selectionType: 'bags' } },
-    { id: 'location', component: LocationSelection, validationFields: ['pickupLocation.address', 'pickupLocation.coordinates', 'dropoffLocation.address', 'dropoffLocation.coordinates'] },
-    { id: 'firstName', component: FirstNameInput, validationFields: ['firstName'] }, 
-    { id: 'phoneNumber', component: PhoneNumberInput, validationFields: ['phoneNumber'] }, 
+    { id: 'location', component: LocationSelection, validationFields: ['pickupLocation.address', 'pickupLocation.coordinates', 'dropoffLocation.address', 'dropoffLocation.coordinates'], props: { autoFocus: true } },
+    { id: 'firstName', component: FirstNameInput, validationFields: ['firstName'], props: { autoFocus: true } }, 
+    { id: 'phoneNumber', component: PhoneNumberInput, validationFields: ['phoneNumber'], props: { autoFocus: true } }, 
     { id: 'summary', component: OrderSummary, validationFields: [], props: { allCarTypes: carTypes } }, 
   ], [carTypes]);
 
 
+  // --- Early Returns (after all hooks have been called) ---
+  if (isLoadingInitialData) {
+    return (
+      <div className="glass-card space-y-8 p-6 sm:p-8 flex justify-center items-center min-h-[300px]">
+        <p className="text-foreground text-lg">جاري تحميل إعدادات الحجز...</p>
+      </div>
+    );
+  }
+
+  if (steps.length === 0 || !steps[currentStep]) {
+      return (
+          <div className="glass-card space-y-8 p-6 sm:p-8 flex justify-center items-center min-h-[300px]">
+              <p className="text-destructive text-lg">خطأ في تهيئة خطوات الحجز. يرجى المحاولة لاحقاً.</p>
+          </div>
+      );
+  }
+
+  // --- Event Handlers ---
   const handleNext = async () => {
-    if (isLoadingInitialData) return; // Prevent navigation if initial data isn't loaded
     const fieldsToValidate = steps[currentStep].validationFields;
     const isValidStep = await trigger(fieldsToValidate.length > 0 ? fieldsToValidate : undefined, { shouldFocus: true });
 
@@ -182,10 +199,6 @@ const BookingForm: FC = () => {
     };
 
   const onSubmit: SubmitHandler<BookingFormData> = async (data) => {
-     if (isLoadingInitialData) {
-        toast({ title: "يرجى الانتظار", description: "جاري تحميل بيانات الحجز الأولية.", variant: "default" });
-        return;
-     }
      const isValidForm = await trigger();
      if (!isValidForm) {
          toast({
@@ -211,12 +224,22 @@ const BookingForm: FC = () => {
 
      try {
         const carTypeLabel = carTypes.find(ct => ct.value === data.carType)?.label || data.carType;
-        // Note: carModelLabel might be complex if it's not just the ID, especially with '-default'
-        // For now, we'll use the carModel value directly, or enhance OrderSummary to resolve it.
+        
+        let carModelLabel = data.carModel;
+        if (data.carModel.endsWith('-default') && data.carType) {
+            const carTypeName = carTypes.find(ct => ct.value === data.carType)?.label || data.carType;
+            carModelLabel = `الموديل القياسي (${carTypeName})`;
+        } else if (data.carType) {
+            const modelsForType = await getCarModelsForBooking(data.carType);
+            const foundModel = modelsForType.find(m => m.value === data.carModel);
+            if (foundModel) carModelLabel = foundModel.label;
+        }
+
 
         const docData = {
           ...data,
-          carTypeLabel, // Store readable car type label
+          carTypeLabel, 
+          carModelLabel, // Store resolved car model label
           createdAt: new Date().toISOString(),
         };
 
@@ -234,7 +257,7 @@ const BookingForm: FC = () => {
 *طلب حجز جديد من ClearRide:*
 -----------------------------
 *نوع السيارة:* ${carTypeLabel}
-*موديل السيارة:* ${data.carModel} 
+*موديل السيارة:* ${carModelLabel} 
 *عدد الركاب:* ${data.passengers}
 *عدد الحقائب:* ${data.bags}
 -----------------------------
@@ -253,7 +276,6 @@ const BookingForm: FC = () => {
        const whatsappUrl = `https://wa.me/${targetPhoneNumber}?text=${encodedMessage}`;
        
        window.open(whatsappUrl, '_blank');
-       // Reset form or redirect as needed after submission
        // methods.reset(); setCurrentStep(0);
 
      } catch (error) {
@@ -266,26 +288,10 @@ const BookingForm: FC = () => {
      }
   };
   
-  if (isLoadingInitialData) {
-    return (
-      <div className="glass-card space-y-8 p-6 sm:p-8 flex justify-center items-center min-h-[300px]">
-        <p className="text-foreground text-lg">جاري تحميل إعدادات الحجز...</p>
-      </div>
-    );
-  }
-
-  if (steps.length === 0 || !steps[currentStep]) {
-      return (
-          <div className="glass-card space-y-8 p-6 sm:p-8 flex justify-center items-center min-h-[300px]">
-              <p className="text-destructive text-lg">خطأ في تهيئة خطوات الحجز. يرجى المحاولة لاحقاً.</p>
-          </div>
-      );
-  }
-
-
   const CurrentComponent = steps[currentStep].component;
   const shouldAutoAdvance = steps[currentStep].autoAdvance && currentStep < steps.length - 1;
   const isPhoneNumberStep = steps[currentStep]?.id === 'phoneNumber';
+  const isSummaryStep = currentStep === steps.length - 1;
   
   const progressPercentage = ((currentStep + 1) / steps.length) * 100;
 
@@ -309,26 +315,28 @@ const BookingForm: FC = () => {
              <CurrentComponent
                 errors={errors} 
                 {...(shouldAutoAdvance && { onNext: handleNext })}
-                {...steps[currentStep].props} // Pass props like carTypes here
-                autoFocus={['firstName', 'phoneNumber', 'location'].includes(steps[currentStep].id) && steps[currentStep].id !== 'location'}
+                {...steps[currentStep].props} 
+                autoFocus={steps[currentStep].props?.autoFocus}
              />
           </motion.div>
 
         <div className="flex justify-between items-center mt-8 pt-4 border-t border-white/20 dark:border-black/20 relative">
-           <Button
-             type="button"
-             onClick={handlePrevious}
-             disabled={currentStep === 0 || isSubmitting}
-             className="glass-button disabled:opacity-50 disabled:cursor-not-allowed absolute left-0" 
-             aria-label="الخطوة السابقة"
-           >
-             <ArrowLeft className="h-5 w-5" />
-           </Button>
+           {currentStep > 0 && (
+             <Button
+               type="button"
+               onClick={handlePrevious}
+               disabled={isSubmitting}
+               className="glass-button disabled:opacity-50 disabled:cursor-not-allowed absolute left-0 text-white" 
+               aria-label="الخطوة السابقة"
+             >
+               <ArrowLeft className="h-5 w-5" />
+             </Button>
+           )}
 
            <div className="flex-grow"></div>
 
            <div className="flex justify-center flex-grow">
-             {currentStep === steps.length - 1 ? (
+             {isSummaryStep ? (
                <Button
                  type="submit"
                  disabled={isSubmitting}
@@ -361,3 +369,5 @@ const BookingForm: FC = () => {
 };
 
 export default BookingForm;
+
+      
