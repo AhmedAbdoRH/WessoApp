@@ -71,8 +71,8 @@ const BookingForm: FC = () => {
     resolver: zodResolver(bookingSchema),
     mode: "onChange", 
     defaultValues: {
-      carType: '', // Removed default selection
-      carModel: '', // Removed default selection
+      carType: '', 
+      carModel: '', 
       passengers: undefined as number | undefined,
       bags: undefined as number | undefined,      
       pickupLocation: { address: '', coordinates: undefined },
@@ -224,26 +224,46 @@ const BookingForm: FC = () => {
          return;
      }
 
-     try {
-        const carTypeLabel = carTypes.find(ct => ct.value === data.carType)?.label || data.carType;
-        
-        let carModelLabel = data.carModel;
-        if (data.carType) {
+    // Prepare data for both Firestore and WhatsApp message
+    let carTypeLabelValue = data.carType;
+    // Assuming `carTypes` is the state variable holding fetched car types
+    const carTypeFromState = carTypes.find(ct => ct.value === data.carType);
+    if (carTypeFromState) {
+        carTypeLabelValue = carTypeFromState.label;
+    }
+
+    let carModelLabelValue = data.carModel;
+    if (data.carType) {
+        try {
             const modelsForType = await getCarModelsForBooking(data.carType);
             const foundModel = modelsForType.find(m => m.value === data.carModel);
             if (foundModel) {
-                carModelLabel = foundModel.label;
-            } else if (data.carModel.endsWith('-default')) { // Handle default model label if no specific models found
-                 const carTypeName = carTypes.find(ct => ct.value === data.carType)?.label || data.carType;
-                 carModelLabel = `الموديل القياسي (${carTypeName})`;
+                carModelLabelValue = foundModel.label;
+            } else if (data.carModel && data.carModel.endsWith('-default')) {
+                 const carTypeNameForDefault = carTypes.find(ct => ct.value === data.carType)?.label || data.carType;
+                 carModelLabelValue = `الموديل القياسي (${carTypeNameForDefault})`;
             }
+        } catch (e) {
+            console.error("Failed to fetch car model details for message, using ID as fallback", e);
+            // carModelLabelValue remains data.carModel (ID or slug)
         }
+    }
+
+    let appNameValue = 'ClearRide'; // Default
+    try {
+        const appConfig = await getAppConfig();
+        appNameValue = appConfig?.appName || 'ClearRide';
+    } catch (e) {
+        console.error("Failed to fetch appName for message, using default", e);
+    }
 
 
+     // Attempt to save to Firestore
+     try {
         const docData = {
           ...data,
-          carTypeLabel, 
-          carModelLabel, 
+          carTypeLabel: carTypeLabelValue, 
+          carModelLabel: carModelLabelValue, 
           createdAt: new Date().toISOString(),
         };
 
@@ -254,18 +274,24 @@ const BookingForm: FC = () => {
             description: "تم حفظ طلب الحجز الخاص بك، وسيتم التواصل معك قريباً.",
         });
 
-       const pickupMapLink = getGoogleMapsLink(data.pickupLocation.coordinates) || getGoogleMapsLinkFromAddress(data.pickupLocation.address);
-       const dropoffMapLink = getGoogleMapsLink(data.dropoffLocation.coordinates) || getGoogleMapsLinkFromAddress(data.dropoffLocation.address);
-       
-       const appConfig = await getAppConfig();
-       const appName = appConfig?.appName || "ClearRide";
-
-
-       const message = `
-*طلب حجز جديد من ${appName}:*
+     } catch (error) {
+       console.error("Error submitting booking to Firestore:", error);
+       toast({
+         title: "خطأ في حفظ الطلب",
+         description: "تعذر حفظ طلب الحجز في قاعدة البيانات. سيتم الآن محاولة إرساله عبر واتساب.",
+         variant: "destructive",
+       });
+     }
+     
+    // Proceed to send WhatsApp message
+    const pickupMapLink = getGoogleMapsLink(data.pickupLocation.coordinates) || getGoogleMapsLinkFromAddress(data.pickupLocation.address);
+    const dropoffMapLink = getGoogleMapsLink(data.dropoffLocation.coordinates) || getGoogleMapsLinkFromAddress(data.dropoffLocation.address);
+    
+    const message = `
+*طلب حجز جديد من ${appNameValue}:*
 -----------------------------
-*نوع السيارة:* ${carTypeLabel}
-*موديل السيارة:* ${carModelLabel} 
+*نوع السيارة:* ${carTypeLabelValue}
+*موديل السيارة:* ${carModelLabelValue} 
 *عدد الركاب:* ${data.passengers}
 *عدد الحقائب:* ${data.bags}
 -----------------------------
@@ -277,23 +303,27 @@ const BookingForm: FC = () => {
 *رقم هاتف العميل:* ${data.phoneNumber}
 -----------------------------
 يرجى تأكيد هذه التفاصيل.
-       `.trim().replace(/\n\s+/g, '\n'); 
+    `.trim().replace(/\n\s+/g, '\n'); 
 
-       const encodedMessage = encodeURIComponent(message);
-       const targetPhoneNumber = "201100434503"; 
-       const whatsappUrl = `https://wa.me/${targetPhoneNumber}?text=${encodedMessage}`;
-       
+    const encodedMessage = encodeURIComponent(message);
+    const targetPhoneNumber = "201100434503"; // User requested phone number
+    const whatsappUrl = `https://wa.me/${targetPhoneNumber}?text=${encodedMessage}`;
+    
+    try {
        window.open(whatsappUrl, '_blank');
-       // methods.reset(); setCurrentStep(0); // Optionally reset form
-
-     } catch (error) {
-       console.error("Error submitting booking:", error);
-       toast({
-         title: "خطأ في الإرسال",
-         description: "تعذر إرسال طلب الحجز الخاص بك. يرجى المحاولة مرة أخرى.",
-         variant: "destructive",
+        toast({
+           title: "جاري فتح واتساب...",
+           description: "إذا لم يفتح واتساب تلقائيًا، يرجى التحقق من إعدادات المتصفح.",
        });
-     }
+       // methods.reset(); setCurrentStep(0); // Optionally reset form
+    } catch (waError) {
+       console.error("Error opening WhatsApp:", waError);
+       toast({
+           title: "خطأ في فتح واتساب",
+           description: "لم نتمكن من فتح واتساب تلقائيًا. يرجى المحاولة يدويًا أو التأكد من تثبيت واتساب.",
+           variant: "destructive",
+       });
+    }
   };
   
   const isPhoneNumberStep = steps[currentStep]?.id === 'phoneNumber';
@@ -320,7 +350,7 @@ const BookingForm: FC = () => {
           >
              <CurrentComponent
                 errors={errors} 
-                {...(shouldAutoAdvance && { onNext: handleNext })} // Pass onNext if autoAdvance is true
+                {...(shouldAutoAdvance && { onNext: handleNext })} 
                 {...steps[currentStep].props} 
                 autoFocus={steps[currentStep].props?.autoFocus}
              />
@@ -352,7 +382,7 @@ const BookingForm: FC = () => {
                  {isSubmitting ? "جاري الإرسال..." : "تأكيد وإرسال"}
                </Button>
              ) : (
-               !shouldAutoAdvance && ( // Only show Next button if not auto-advancing
+               !shouldAutoAdvance && ( 
                   <Button
                     type="button"
                     onClick={handleNext}
