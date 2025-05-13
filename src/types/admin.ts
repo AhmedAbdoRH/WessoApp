@@ -22,6 +22,5 @@ export interface CarModelOptionAdmin {
 export interface AppConfig {
   appName?: string;
   logoUrl?: string;
-  // If logo is also uploaded to Cloudinary and managed via admin panel:
-  // logoPublicId?: string; 
+  logoPublicId?: string; 
 }

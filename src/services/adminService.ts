@@ -34,7 +34,7 @@ export async function getAppConfig(): Promise<AppConfig | null> {
       return docSnap.data() as AppConfig;
     }
     // Return default config if none exists
-    return { appName: 'ClearRide', logoUrl: '' };
+    return { appName: 'ClearRide', logoUrl: '', logoPublicId: '' };
   } catch (error) {
     console.error('Error fetching app config:', error);
     if (error instanceof Error) {
@@ -44,10 +44,43 @@ export async function getAppConfig(): Promise<AppConfig | null> {
   }
 }
 
-export async function updateAppConfigAdmin(config: AppConfig): Promise<void> {
+export async function updateAppConfigAdmin(formData: FormData): Promise<void> {
+  const appName = formData.get('appName') as string;
+  const logoFile = formData.get('logoFile') as File | null;
+  const removeLogoStr = formData.get('removeLogo') as string | null;
+  const removeLogo = removeLogoStr === 'true';
+  const currentLogoPublicId = formData.get('currentLogoPublicId') as string | null;
+
   try {
+    const configUpdate: Partial<AppConfig> = { appName };
+
+    if (logoFile) {
+      // New logo uploaded
+      if (currentLogoPublicId) {
+        await deleteImageFromCloudinary(currentLogoPublicId).catch(e => console.warn("Failed to delete old app logo, continuing:", e.message));
+      }
+      const uploadResult = await uploadImageToCloudinary(logoFile, 'app_logos');
+      configUpdate.logoUrl = uploadResult.secure_url;
+      configUpdate.logoPublicId = uploadResult.public_id;
+    } else if (removeLogo) {
+      // User wants to remove the existing logo
+      if (currentLogoPublicId) {
+        await deleteImageFromCloudinary(currentLogoPublicId).catch(e => console.warn("Failed to delete app logo for removal, continuing:", e.message));
+      }
+      configUpdate.logoUrl = '';
+      configUpdate.logoPublicId = '';
+    } else {
+      // No new logo, not removing explicitly. Keep existing if it was there.
+      // If currentLogoPublicId was passed, it implies there was a logo.
+      // If it wasn't, there wasn't one or it was already cleared.
+      // We'll fetch the existing config to be sure we don't accidentally clear it if no changes were made to the logo.
+      const existingConfig = await getAppConfig();
+      configUpdate.logoUrl = existingConfig?.logoUrl || '';
+      configUpdate.logoPublicId = existingConfig?.logoPublicId || '';
+    }
+
     const docRef = doc(db, APP_CONFIG_COLLECTION, APP_CONFIG_DOC_ID);
-    await setDoc(docRef, config, { merge: true });
+    await setDoc(docRef, configUpdate, { merge: true });
   } catch (error) {
     console.error('Error updating app config:', error);
     if (error instanceof Error) {
@@ -89,14 +122,9 @@ async function uploadImageToCloudinary(file: File, folder: string): Promise<{ se
   }
 
   const timestamp = Math.round(new Date().getTime() / 1000);
-  // For signed uploads, 'public_id' can be specified if you want to control it,
-  // or let Cloudinary generate it. 'folder' is also a good parameter to sign.
-  // For maximum security, sign all parameters you intend to send, except 'file', 'api_key', and 'signature'.
   const paramsToSign: Record<string, string | number> = {
     folder: folder,
     timestamp: timestamp,
-    // Example: eager: 'w_400,h_300,c_pad|w_260,h_200,c_crop', // if you have specific transformations
-    // Example: unique_filename: 'true', // To avoid overwriting based on filename
   };
   const signature = generateSignature(paramsToSign, CLOUDINARY_API_SECRET);
 
@@ -106,7 +134,6 @@ async function uploadImageToCloudinary(file: File, folder: string): Promise<{ se
   formData.append('timestamp', String(timestamp));
   formData.append('signature', signature);
   formData.append('folder', folder);
-  // Add any other parameters you signed above, e.g., formData.append('eager', paramsToSign.eager);
 
   try {
     const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
@@ -151,7 +178,6 @@ async function deleteImageFromCloudinary(publicId: string): Promise<void> {
   const paramsToSign: Record<string, string | number> = { 
     public_id: publicId,
     timestamp: timestamp,
-    // invalidate: true, // Optionally invalidate CDN cache
   };
   const signature = generateSignature(paramsToSign, CLOUDINARY_API_SECRET);
 
@@ -160,7 +186,6 @@ async function deleteImageFromCloudinary(publicId: string): Promise<void> {
   formData.append('api_key', CLOUDINARY_API_KEY);
   formData.append('timestamp', String(timestamp));
   formData.append('signature', signature);
-  // formData.append('invalidate', 'true'); // if signed
 
   try {
     const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/destroy`, {
@@ -229,30 +254,29 @@ export async function updateCarTypeAdmin(
   data: {
     label?: string;
     order?: number;
-    imageUrlInput?: File | null; // File for new upload, null to remove image, undefined to keep current
-    currentImageUrl?: string; // Needed if not changing image
-    currentPublicId?: string; // Needed if not changing image or for deletion
+    imageUrlInput?: File | null; 
+    currentImageUrl?: string; 
+    currentPublicId?: string; 
    }
 ): Promise<void> {
   try {
     let newImageUrl = data.currentImageUrl;
     let newPublicId = data.currentPublicId;
 
-    const { imageUrlInput, ...updateDataFromForm } = data; // Separate imageUrlInput
+    const { imageUrlInput, ...updateDataFromForm } = data; 
 
-    if (imageUrlInput instanceof File) { // A new file is provided
-      if (data.currentPublicId) { // Delete old image if it exists
+    if (imageUrlInput instanceof File) { 
+      if (data.currentPublicId) { 
         await deleteImageFromCloudinary(data.currentPublicId);
       }
       const uploadResult = await uploadImageToCloudinary(imageUrlInput, 'car_types');
       newImageUrl = uploadResult.secure_url;
       newPublicId = uploadResult.public_id;
-    } else if (imageUrlInput === null && data.currentPublicId) { // Explicitly remove image
+    } else if (imageUrlInput === null && data.currentPublicId) { 
       await deleteImageFromCloudinary(data.currentPublicId);
       newImageUrl = '';
       newPublicId = '';
     }
-    // If imageUrlInput is undefined, image remains unchanged.
   
     const docRef = doc(db, CAR_TYPES_COLLECTION, id);
     const updatePayload: Partial<Omit<CarTypeOptionAdmin, 'id' | 'currentImageUrl' | 'currentPublicId'>> = { 
@@ -267,7 +291,6 @@ export async function updateCarTypeAdmin(
       }
     }
 
-    // Only update image fields if they've changed
     if (newImageUrl !== data.currentImageUrl || newPublicId !== data.currentPublicId) {
       updatePayload.imageUrl = newImageUrl;
       updatePayload.publicId = newPublicId;
@@ -331,11 +354,6 @@ export async function deleteCarTypeAdmin(id: string): Promise<void> {
 // --- Car Models ---
 export async function getCarModelsAdmin(): Promise<CarModelOptionAdmin[]> {
   try {
-    // Firestore composite queries require an index. 
-    // If you get an error message about a missing index, create it in the Firebase console.
-    // The error message usually provides a direct link to create the index.
-    // For `orderBy('order', 'asc'), orderBy('type', 'asc')` on `carModels`, 
-    // you'll need a composite index on (order ASC, type ASC).
     const q = query(collection(db, CAR_MODELS_COLLECTION), orderBy('type', 'asc'), orderBy('order', 'asc'));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as CarModelOptionAdmin));
@@ -498,8 +516,6 @@ export async function getCarModelsForBooking(carTypeValue: string): Promise<Omit
     });
   } catch (error) {
     console.error("Error in getCarModelsForBooking (type: " + carTypeValue + "):", error);
-    // This function is called client-side, so returning an empty array might be better
-    // than throwing an error that could break the UI.
     return [];
   }
 }
