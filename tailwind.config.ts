@@ -83,15 +83,12 @@ export default {
   					height: '0'
   				}
   			},
-        'progress-shimmer': {
-          '0%': { backgroundPosition: '200% center' },
-          '100%': { backgroundPosition: '-200% center' },
-        },
+        // Removed progress-shimmer keyframes
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out',
-        'progress-shimmer': 'progress-shimmer 2.5s linear infinite',
+        // Removed animate-progress-shimmer
   		}
   	}
   },

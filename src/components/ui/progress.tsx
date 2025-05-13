@@ -13,20 +13,17 @@ const Progress = React.forwardRef<
   <ProgressPrimitive.Root
     ref={ref}
     className={cn(
-      "relative h-2 w-full overflow-hidden rounded-full bg-secondary", // Keeping h-2 as per previous modifications
+      "progress-track", // New class for root styling from globals.css
       className
     )}
     {...props}
   >
     <ProgressPrimitive.Indicator
       className={cn(
-        "h-full w-full flex-1 transition-transform duration-500 ease-out animate-progress-shimmer" // Added animate-progress-shimmer
+        "progress-bar" // New class for indicator styling from globals.css
       )}
-      // Adjust transform based on direction
       style={{
         transform: dir === 'rtl' ? `translateX(${100 - (value || 0)}%)` : `translateX(-${100 - (value || 0)}%)`,
-        backgroundImage: `linear-gradient(to right, hsl(var(--primary)/0.7) 25%, hsl(var(--primary)) 50%, hsl(var(--primary)/0.7) 75%)`, // Gradient for shimmer effect
-        backgroundSize: '200% 100%', // Needs to be larger than element for movement
       }}
     />
   </ProgressPrimitive.Root>
