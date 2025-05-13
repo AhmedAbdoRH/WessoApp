@@ -42,7 +42,7 @@ export default function RootLayout({
       <body className={`antialiased`}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="light" // Default to light theme
+          defaultTheme="dark" // Default to dark theme
           enableSystem={false} // Disable system preference detection
           disableTransitionOnChange
         >
