@@ -8,28 +8,28 @@ body {
 
 @layer base {
   :root {
-    /* Light Theme variables - Mint Green and Lemon Yellow */
-    --background-light: 0 0% 100%;       /* White background */
+    /* Light Theme variables - White base, Lemon Yellow to Mint Green gradient, Orange accent */
+    --background-light: 0 0% 100%;       /* White background (main content areas) */
     --foreground-light: 220 15% 25%;     /* Dark Slate Blue for text */
     --card-light: 0 0% 100%;             /* White card base (opacity set by .glass-card) */
     --card-foreground-light: 220 15% 25%;
     --popover-light: 0 0% 100%;
     --popover-foreground-light: 220 15% 25%;
-    --primary-light: 160 70% 45%;        /* Mint Green */
-    --primary-foreground-light: 0 0% 100%; /* White text on Mint Green */
+    --primary-light: 25 95% 55%;        /* Orange for primary actions */
+    --primary-foreground-light: 0 0% 100%; /* White text on Orange */
     --secondary-light: 160 70% 90%;      /* Lighter Mint for secondary elements */
     --secondary-foreground-light: 160 70% 30%; /* Darker Mint for text on light mint */
-    --muted-light: 160 70% 95%;          /* Very Light Mint for muted backgrounds */
-    --muted-foreground-light: 160 40% 50%; /* Muted Mint text */
-    --accent-light: 52 95% 55%;          /* Lemon Yellow */
-    --accent-foreground-light: 0 0% 100%;  /* White text on Lemon Yellow */
+    --muted-light: 52 80% 95%;          /* Very Light Lemon Yellow for muted backgrounds */
+    --muted-foreground-light: 52 40% 50%; /* Muted Lemon Yellow text */
+    --accent-light: 160 70% 45%;          /* Mint Green as main accent (used for non-primary buttons, etc.) */
+    --accent-foreground-light: 0 0% 100%;  /* White text on Mint Green */
     --destructive-light: 0 84.2% 60.2%;
     --destructive-foreground-light: 0 0% 98%;
     --border-light: 160 50% 80%;         /* Light Mint border */
     --input-light: 0 0% 100%;            /* White input base (opacity/style via .glass-input) */
-    --ring-light: 160 70% 45%;           /* Mint Green for focus rings */
+    --ring-light: 25 95% 55%;           /* Orange for focus rings (primary) */
 
-    /* Dark theme variables - Adjusted for black/brown gradient and Teal accent */
+    /* Dark theme variables - Black/brown gradient and Teal accent */
     --background: 25 15% 6%; /* Dark Brown-Black */
     --foreground: 30 10% 85%;   /* Off-white/Light Beige text */
     --card: 25 12% 10%;       /* Slightly Lighter Dark Brown Card */
@@ -78,19 +78,19 @@ body {
     --card-foreground: var(--card-foreground-light);
     --popover: var(--popover-light);
     --popover-foreground: var(--popover-foreground-light);
-    --primary: var(--primary-light);
+    --primary: var(--primary-light); /* Orange */
     --primary-foreground: var(--primary-foreground-light);
     --secondary: var(--secondary-light);
     --secondary-foreground: var(--secondary-foreground-light);
     --muted: var(--muted-light);
     --muted-foreground: var(--muted-foreground-light);
-    --accent: var(--accent-light);
+    --accent: var(--accent-light); /* Mint Green */
     --accent-foreground: var(--accent-foreground-light);
     --destructive: var(--destructive-light);
     --destructive-foreground: var(--destructive-foreground-light);
     --border: var(--border-light);
     --input: var(--input-light);
-    --ring: var(--ring-light);
+    --ring: var(--ring-light); /* Orange */
   }
 }
 
@@ -104,9 +104,10 @@ body {
     font-family: 'Cairo', sans-serif; /* Ensure Cairo font is applied */
   }
 
-  /* Light theme body background with subtle mint/lemon gradient */
+  /* Light theme body background with Lemon Yellow to Mint Green gradient */
   html.light body {
-    @apply bg-gradient-to-br from-[hsl(160,100%,97%)] via-[hsl(52,100%,97%)] to-[hsl(160,100%,97%)] text-foreground;
+    /* Gradient from a light lemon yellow to a light mint green */
+    @apply bg-gradient-to-br from-[hsl(52,100%,97%)] via-[hsl(100,100%,97%)] to-[hsl(160,100%,97%)] text-foreground;
   }
 }
 
@@ -127,16 +128,17 @@ body {
   /* Glassmorphism card style - works for both light and dark */
   .glass-card {
     @apply bg-card/60 dark:bg-card/70 backdrop-blur-xl border border-border/30 rounded-2xl shadow-2xl p-4 sm:p-6 transition-all duration-300 hover:shadow-primary/20 dark:hover:shadow-accent/30;
+     /* For light theme, card base is white, so bg-card/60 is white/60. Border is light-mint/30 */
   }
 
   /* Glassmorphism button style - base for light, dark: overrides */
   .glass-button {
     @apply bg-white/20 /* Light: slightly opaque white */
            backdrop-blur-md
-           border border-primary/30 /* Light: primary accent border */
+           border border-primary/30 /* Light: primary (orange) accent border */
            rounded-xl shadow-lg py-2.5 px-5
            transition-all duration-300
-           text-primary /* Light: primary color text */
+           text-primary /* Light: primary (orange) color text */
            hover:bg-white/30 /* Light: hover effect */
            hover:shadow-primary/40 dark:hover:shadow-accent/50 /* Adjusted hover shadow for light theme */
            active:scale-95
@@ -147,19 +149,20 @@ body {
            dark:text-white /* Dark: white text */
            dark:hover:bg-white/10; /* Dark: hover effect */
   }
+  
   /* Ensure button variants that use primary/accent also use their foreground colors */
-  /* These should generally work if the HSL variables are set up correctly for both themes */
   .glass-button.bg-primary, .glass-button.bg-primary\/80 {
-    @apply text-primary-foreground;
+    @apply text-primary-foreground; /* Should be white for orange bg */
   }
   .glass-button.bg-accent, .glass-button.bg-accent\/80 {
-    @apply text-accent-foreground;
+    @apply text-accent-foreground; /* Should be white for mint-green bg */
   }
 
 
    /* Glassmorphism input style - works for both light and dark via CSS vars */
   .glass-input {
     @apply bg-input/50 dark:bg-input/50 backdrop-blur-sm border border-border/30 rounded-xl shadow-inner text-foreground placeholder-muted-foreground focus:ring-ring focus:border-ring focus:bg-input/70 dark:focus:bg-input/70;
+    /* For light theme: input is white/50, border is light-mint/30, ring is orange */
    }
 
   /* Glassmorphism radio button style (visual only, actual radio is hidden) */
@@ -190,7 +193,8 @@ body {
   .admin-form textarea {
     @apply min-h-[100px];
   }
-  /* Admin submit buttons will use accent and its foreground by default from CSS vars */
+  /* Admin submit buttons will use accent (mint-green) and its foreground by default from CSS vars in light theme */
+  /* For dark theme, it uses the dark theme's accent (teal) */
   .admin-form button[type="submit"] {
     @apply glass-button bg-accent/80 hover:bg-accent text-accent-foreground;
   }
@@ -203,19 +207,24 @@ body {
   .admin-item-actions button {
     @apply glass-button text-xs px-3 py-1.5 ml-2;
     /* Override default glass-button text for general admin action buttons if needed */
+    /* Light theme: text-muted-foreground (muted lemon yellow) */
+    /* Dark theme: text-muted-foreground (muted beige) */
     @apply text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-foreground;
   }
   
   /* Specific styling for buttons with .text-destructive class within .admin-item-actions */
   .admin-item-actions button.text-destructive {
     @apply border-destructive/50 hover:bg-destructive/20; 
-    color: hsl(var(--destructive)); /* Use CSS variable directly */
+    /* This will apply the destructive HSL color from the current theme (light or dark) */
+    color: hsl(var(--destructive)); 
   }
    .admin-item-actions button.text-destructive:hover {
     @apply text-destructive-foreground; 
   }
 
   .admin-prominent-button {
+    /* Light theme: accent (mint-green) background, accent-foreground (white) text */
+    /* Dark theme: accent (teal) background, accent-foreground (white) text */
     @apply fixed bottom-6 right-6 p-3 bg-accent/90 text-accent-foreground rounded-full shadow-xl hover:bg-accent transition-transform duration-300 z-50 opacity-90 hover:opacity-100 hover:scale-105 active:scale-100;
   }
 
@@ -224,17 +233,19 @@ body {
     @apply relative w-full overflow-hidden;
     height: 1.25rem; /* 20px */
     border-radius: 6px;
-    background-color: hsl(var(--muted)); /* Use muted for track bg for better contrast */
+    background-color: hsl(var(--muted)); /* Light: Very Light Lemon. Dark: Dark Brown-Black */
+    /* Removed outline from here */
     box-shadow: inset 0.2rem 0.2rem 0.5rem hsl(var(--muted) / 0.7),
                 inset -0.2rem -0.2rem 0.5rem hsl(var(--border) / 0.7);
   }
 
   .progress-bar { /* Applied to ProgressPrimitive.Indicator */
     @apply h-full w-full flex-1 transition-transform duration-500 ease-out;
+    /* primary color for progress bar (Orange for light, Orange/Red for dark) */
     background-color: hsl(var(--primary)); 
     background-image: linear-gradient(
       45deg,
-      hsla(var(--primary-foreground), 0.2) 25%,
+      hsla(var(--primary-foreground), 0.2) 25%, /* primary-foreground is white */
       transparent 25%,
       transparent 50%,
       hsla(var(--primary-foreground), 0.2) 50%,
