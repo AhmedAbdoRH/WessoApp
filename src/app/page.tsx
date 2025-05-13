@@ -1,8 +1,10 @@
+
 import BookingForm from '@/components/BookingForm';
 import { getAppConfig } from '@/services/adminService';
 import { CarFront, Cog } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import ClientOnly from '@/components/ClientOnly'; // Import the ClientOnly component
 
 export default async function Home() {
   const appConfig = await getAppConfig();
@@ -29,11 +31,15 @@ export default async function Home() {
             {appName}
           </h1>
         </div>
-        <BookingForm />
+        <ClientOnly>
+          <BookingForm />
+        </ClientOnly>
       </div>
-      <Link href="/admin" className="admin-prominent-button" aria-label="لوحة التحكم">
-        <Cog size={24} />
-      </Link>
+      <ClientOnly>
+        <Link href="/admin" className="admin-prominent-button" aria-label="لوحة التحكم">
+          <Cog size={24} />
+        </Link>
+      </ClientOnly>
     </main>
   );
 }
