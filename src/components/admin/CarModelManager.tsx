@@ -1,7 +1,7 @@
 // src/components/admin/CarModelManager.tsx
 'use client';
 
-import React, { useState, useTransition, useEffect } from 'react';
+import React, { useState, useTransition, useEffect, useRef } from 'react';
 import { useForm, type SubmitHandler, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -11,9 +11,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import type { CarModelOptionAdmin, CarTypeOptionAdmin } from '@/types/admin';
-import { addCarModelAdmin, updateCarModelAdmin, deleteCarModelAdmin } from '@/services/adminService'; // Server Actions
+import { addCarModelAdmin, updateCarModelAdmin, deleteCarModelAdmin } from '@/services/adminService';
 import { useRouter } from 'next/navigation';
-import { Trash2, Edit, PlusCircle } from 'lucide-react';
+import { Trash2, Edit, PlusCircle, UploadCloud, XCircle } from 'lucide-react';
 import Image from 'next/image';
 import {
   AlertDialog,
@@ -27,20 +27,24 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-const carModelSchema = z.object({
+const carModelFormSchema = z.object({
   value: z.string().min(1, 'معرف الموديل مطلوب').max(50, 'المعرف طويل جداً').regex(/^[a-z0-9-]+$/, 'المعرف يجب أن يحتوي على أحرف صغيرة وأرقام وشرطات فقط.'),
   label: z.string().min(1, 'اسم الموديل (بالعربية) مطلوب').max(100, 'الاسم طويل جداً'),
-  imageUrl: z.string().url('رابط صورة صالح مطلوب'),
+  imageUrlInput: z.instanceof(FileList).optional(),
+  existingImageUrl: z.string().url().optional().or(z.literal('')),
   type: z.string().min(1, 'يجب اختيار نوع السيارة'),
   dataAiHint: z.string().optional(),
   order: z.coerce.number().min(0, 'الترتيب يجب أن يكون 0 أو أكبر'),
+}).refine(data => data.imageUrlInput && data.imageUrlInput.length > 0 || !!data.existingImageUrl, {
+  message: "الرجاء اختيار صورة جديدة أو التأكد من وجود صورة حالية.",
+  path: ["imageUrlInput"],
 });
 
-type CarModelFormData = z.infer<typeof carModelSchema>;
+type CarModelFormData = z.infer<typeof carModelFormSchema>;
 
 interface CarModelManagerProps {
   initialCarModels: CarModelOptionAdmin[];
-  allCarTypes: Pick<CarTypeOptionAdmin, 'value' | 'label'>[]; // To populate dropdown
+  allCarTypes: Pick<CarTypeOptionAdmin, 'value' | 'label'>[];
 }
 
 export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManagerProps) {
@@ -50,37 +54,58 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
   const [editingCarModel, setEditingCarModel] = useState<CarModelOptionAdmin | null>(null);
   const [carModels, setCarModels] = useState<CarModelOptionAdmin[]>(initialCarModels);
   const [showForm, setShowForm] = useState(false);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { register, handleSubmit, reset, setValue, control, formState: { errors, isDirty } } = useForm<CarModelFormData>({
-    resolver: zodResolver(carModelSchema),
+
+  const { register, handleSubmit, reset, setValue, control, watch, formState: { errors, isDirty } } = useForm<CarModelFormData>({
+    resolver: zodResolver(carModelFormSchema),
     defaultValues: {
       value: '',
       label: '',
-      imageUrl: '',
+      existingImageUrl: '',
       type: '',
       dataAiHint: '',
-      order: 0, // Default order, can be improved
+      order: 0,
     },
   });
-  
-  useEffect(() => {
-    setCarModels(initialCarModels);
-    if (!editingCarModel && !showForm) {
-        const defaultOrder = initialCarModels.length > 0 ? Math.max(...initialCarModels.map(cm => cm.order)) + 1 : 0;
-        reset({ order: defaultOrder, type: allCarTypes[0]?.value || '' });
-    }
-  }, [initialCarModels, allCarTypes, reset, editingCarModel, showForm]);
 
+  const watchedImageUrlInput = watch('imageUrlInput');
+  const watchedExistingImageUrl = watch('existingImageUrl');
+
+  useEffect(() => {
+    if (watchedImageUrlInput && watchedImageUrlInput.length > 0) {
+      const file = watchedImageUrlInput[0];
+      const previewUrl = URL.createObjectURL(file);
+      setImagePreviewUrl(previewUrl);
+      return () => URL.revokeObjectURL(previewUrl);
+    } else if (watchedExistingImageUrl) {
+      setImagePreviewUrl(watchedExistingImageUrl);
+    } else {
+      setImagePreviewUrl(null);
+    }
+  }, [watchedImageUrlInput, watchedExistingImageUrl]);
 
   const handleEdit = (carModel: CarModelOptionAdmin) => {
     setEditingCarModel(carModel);
     setValue('value', carModel.value);
     setValue('label', carModel.label);
-    setValue('imageUrl', carModel.imageUrl);
+    setValue('existingImageUrl', carModel.imageUrl || '');
+    setValue('imageUrlInput', undefined);
     setValue('type', carModel.type);
     setValue('dataAiHint', carModel.dataAiHint || '');
     setValue('order', carModel.order);
     setShowForm(true);
+    setImagePreviewUrl(carModel.imageUrl || null);
+  };
+  
+  const handleClearImage = () => {
+    setValue('imageUrlInput', undefined);
+    setValue('existingImageUrl', '');
+    if(fileInputRef.current) {
+        fileInputRef.current.value = "";
+    }
+    setImagePreviewUrl(null);
   };
 
   const resetFormAndState = () => {
@@ -88,34 +113,56 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
     reset({
       value: '',
       label: '',
-      imageUrl: '',
+      imageUrlInput: undefined,
+      existingImageUrl: '',
       type: allCarTypes[0]?.value || '',
       dataAiHint: '',
       order: defaultOrder,
     });
     setEditingCarModel(null);
     setShowForm(false);
+    setImagePreviewUrl(null);
+    if(fileInputRef.current) {
+        fileInputRef.current.value = "";
+    }
   };
 
   const onSubmit: SubmitHandler<CarModelFormData> = async (data) => {
     startTransition(async () => {
       try {
+        const imageFile = data.imageUrlInput && data.imageUrlInput.length > 0 ? data.imageUrlInput[0] : null;
+
         if (editingCarModel) {
-          // Value (ID) cannot be changed during an update.
+          if (!imageFile && !data.existingImageUrl) {
+            toast({ title: 'خطأ', description: 'الرجاء توفير صورة.', variant: 'destructive' });
+            return;
+          }
           await updateCarModelAdmin(editingCarModel.id!, {
             label: data.label,
-            imageUrl: data.imageUrl,
+            imageUrlInput: imageFile,
+            currentImageUrl: editingCarModel.imageUrl,
             type: data.type,
             dataAiHint: data.dataAiHint,
             order: data.order,
           });
           toast({ title: 'تم التحديث', description: `تم تحديث موديل السيارة: ${data.label}` });
         } else {
-          await addCarModelAdmin(data);
+          if (!imageFile) {
+            toast({ title: 'خطأ', description: 'الرجاء اختيار ملف صورة.', variant: 'destructive' });
+            return;
+          }
+          await addCarModelAdmin({
+            value: data.value,
+            label: data.label,
+            imageUrlInput: imageFile,
+            type: data.type,
+            dataAiHint: data.dataAiHint,
+            order: data.order,
+          });
           toast({ title: 'تمت الإضافة', description: `تمت إضافة موديل السيارة: ${data.label}` });
         }
         resetFormAndState();
-        router.refresh(); // Reload data
+        router.refresh();
       } catch (error) {
         console.error('Failed to save car model:', error);
         toast({
@@ -127,12 +174,11 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
     });
   };
 
-  const handleDelete = (id: string, label: string) => {
+  const handleDelete = (carModel: CarModelOptionAdmin) => {
     startTransition(async () => {
       try {
-        await deleteCarModelAdmin(id);
-        toast({ title: 'تم الحذف', description: `تم حذف موديل السيارة: ${label}` });
-        setCarModels(prev => prev.filter(cm => cm.id !== id)); // Optimistic update
+        await deleteCarModelAdmin(carModel.id!);
+        toast({ title: 'تم الحذف', description: `تم حذف موديل السيارة: ${carModel.label}` });
         router.refresh();
       } catch (error) {
         console.error('Failed to delete car model:', error);
@@ -144,6 +190,23 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
       }
     });
   };
+  
+  useEffect(() => {
+    setCarModels(initialCarModels);
+    if (!editingCarModel && !showForm) {
+        const defaultOrder = initialCarModels.length > 0 ? Math.max(...initialCarModels.map(cm => cm.order)) + 1 : 0;
+        reset({ 
+            value: '',
+            label: '',
+            imageUrlInput: undefined,
+            existingImageUrl: '',
+            type: allCarTypes[0]?.value || '', 
+            dataAiHint: '',
+            order: defaultOrder 
+        });
+    }
+  }, [initialCarModels, allCarTypes, reset, editingCarModel, showForm]);
+
 
   return (
     <div className="space-y-6">
@@ -151,7 +214,16 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
           setShowForm(true); 
           setEditingCarModel(null); 
           const defaultOrder = carModels.length > 0 ? Math.max(...carModels.map(cm => cm.order)) + 1 : 0;
-          reset({ order: defaultOrder, type: allCarTypes[0]?.value || '' });
+          reset({ 
+            value: '',
+            label: '',
+            imageUrlInput: undefined,
+            existingImageUrl: '',
+            type: allCarTypes[0]?.value || '',
+            dataAiHint: '',
+            order: defaultOrder 
+            });
+          setImagePreviewUrl(null);
         }}  
         className="mb-4 bg-accent hover:bg-accent/90 text-accent-foreground"
         disabled={allCarTypes.length === 0}
@@ -175,11 +247,41 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
             <Input id="cm-label" {...register('label')} />
             {errors.label && <p className="text-sm text-destructive mt-1">{errors.label.message}</p>}
           </div>
+
           <div>
-            <Label htmlFor="cm-imageUrl">رابط الصورة</Label>
-            <Input id="cm-imageUrl" type="url" {...register('imageUrl')} />
-            {errors.imageUrl && <p className="text-sm text-destructive mt-1">{errors.imageUrl.message}</p>}
+            <Label htmlFor="cm-imageUrlInput">صورة الموديل</Label>
+             <div className="flex items-center gap-4">
+                {imagePreviewUrl && (
+                    <div className="relative w-24 h-16 rounded border border-muted overflow-hidden">
+                        <Image src={imagePreviewUrl} alt="معاينة الصورة" layout="fill" objectFit="cover" />
+                    </div>
+                )}
+                 {!imagePreviewUrl && (
+                    <div className="w-24 h-16 rounded border border-dashed border-muted flex items-center justify-center bg-muted/20">
+                        <UploadCloud className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                )}
+                <Input 
+                    id="cm-imageUrlInput" 
+                    type="file" 
+                    accept="image/*" 
+                    {...register('imageUrlInput')}
+                    className="flex-grow"
+                    ref={fileInputRef}
+                />
+                {(imagePreviewUrl || (watchedImageUrlInput && watchedImageUrlInput.length > 0)) && (
+                     <Button type="button" variant="ghost" size="sm" onClick={handleClearImage} aria-label="مسح الصورة">
+                        <XCircle className="w-5 h-5 text-destructive"/>
+                    </Button>
+                )}
+            </div>
+            <input type="hidden" {...register('existingImageUrl')} />
+            {errors.imageUrlInput && <p className="text-sm text-destructive mt-1">{errors.imageUrlInput.message}</p>}
+            {editingCarModel && !imagePreviewUrl && !watchedImageUrlInput?.length && (
+              <p className="text-xs text-muted-foreground mt-1">اترك حقل الملف فارغًا للاحتفاظ بالصورة الحالية.</p>
+            )}
           </div>
+
           <div>
             <Label htmlFor="cm-type">نوع السيارة</Label>
             <Controller
@@ -225,7 +327,11 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
         {carModels.map((carModel) => (
           <div key={carModel.id} className="admin-item">
              <div className="flex items-center gap-4">
-              <Image src={carModel.imageUrl} alt={carModel.label} width={60} height={40} className="rounded object-cover" data-ai-hint={carModel.dataAiHint || "car model image"}/>
+              {carModel.imageUrl ? (
+                <Image src={carModel.imageUrl} alt={carModel.label} width={60} height={40} className="rounded object-cover" data-ai-hint={carModel.dataAiHint || "car model image"}/>
+              ) : (
+                 <div className="w-[60px] h-[40px] rounded bg-muted flex items-center justify-center text-xs text-muted-foreground">لا توجد صورة</div>
+              )}
               <div>
                 <p className="font-semibold">{carModel.label} <span className="text-xs text-muted-foreground">({carModel.value})</span></p>
                 <p className="text-xs text-muted-foreground">النوع: {allCarTypes.find(t => t.value === carModel.type)?.label || carModel.type} | الترتيب: {carModel.order}</p>
@@ -251,7 +357,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
                   <AlertDialogFooter>
                     <AlertDialogCancel>إلغاء</AlertDialogCancel>
                     <AlertDialogAction
-                      onClick={() => handleDelete(carModel.id!, carModel.label)}
+                      onClick={() => handleDelete(carModel)}
                       disabled={isPending}
                        className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                     >
