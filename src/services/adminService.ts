@@ -1,3 +1,4 @@
+
 // src/services/adminService.ts
 'use server';
 
@@ -16,7 +17,8 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+// Firebase Storage imports are removed as we are switching to ImgBB
+// import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import type { AppConfig, CarTypeOptionAdmin, CarModelOptionAdmin } from '@/types/admin';
 import { slugify } from '@/lib/slugify'; // Helper for generating 'value'
 
@@ -36,8 +38,7 @@ export async function getAppConfig(): Promise<AppConfig | null> {
     return null;
   } catch (error) {
     console.error('Error fetching app config:', error);
-    // In a real app, you might want to throw a more specific error or handle it
-    return null; // Return null or a default config if appropriate
+    return null;
   }
 }
 
@@ -47,77 +48,72 @@ export async function updateAppConfigAdmin(config: AppConfig): Promise<void> {
 }
 
 
-// --- Image Upload Helper ---
-async function uploadImage(file: File, path: string): Promise<string> {
-  const storage = getStorage();
-  // Sanitize filename, replace spaces with underscores, ensure uniqueness
-  const safeFileName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-  const storageRef = ref(storage, `${path}/${safeFileName}`);
-  
-  try {
-    const snapshot = await uploadBytes(storageRef, file);
-    const downloadURL = await getDownloadURL(snapshot.ref);
-    return downloadURL;
-  } catch (error: any) {
-    console.error("Full Firebase Storage Error:", error);
-    let userMessage = "فشل تحميل الصورة.";
+// --- Image Upload Helper (ImgBB) ---
+async function uploadImage(file: File, path?: string): Promise<string> { // path is optional for ImgBB
+  const apiKey = process.env.IMGBB_API_KEY;
 
-    if (error.code) {
-        switch (error.code) {
-            case 'storage/unauthorized':
-                userMessage = "فشل تحميل الصورة: ليس لديك إذن لتنفيذ هذا الإجراء. تحقق من قواعد أمان Firebase Storage.";
-                break;
-            case 'storage/canceled':
-                userMessage = "فشل تحميل الصورة: تم إلغاء التحميل.";
-                break;
-            case 'storage/quota-exceeded':
-                userMessage = "فشل تحميل الصورة: تجاوز حد التخزين المسموح به.";
-                break;
-            case 'storage/object-not-found':
-                 userMessage = "فشل تحميل الصورة: الملف أو المسار غير موجود.";
-                 break;
-            case 'storage/retry-limit-exceeded':
-                userMessage = "فشل تحميل الصورة: تم تجاوز مهلة المحاولة. يرجى التحقق من اتصالك بالإنترنت.";
-                break;
-             case 'storage/invalid-argument':
-                userMessage = "فشل تحميل الصورة: وسيطة غير صالحة مقدمة لوظيفة التخزين.";
-                break;
-            // This case often indicates CORS issues or other server-side restrictions
-            case 'storage/unknown': 
-                userMessage = "فشل تحميل الصورة: خطأ غير معروف من الخادم. يرجى التحقق من إعدادات CORS وقواعد Storage في Firebase Console. راجع وحدة التحكم للمطورين في المتصفح لمزيد من التفاصيل حول استجابة الشبكة.";
-                break;
-            default:
-                userMessage = `فشل تحميل الصورة: ${error.message || 'خطأ غير متوقع.'}`;
-        }
-    } else if (error.message && error.message.includes('CORS')) {
-         userMessage = "فشل تحميل الصورة بسبب مشكلة CORS. تأكد من تكوين CORS بشكل صحيح لدلو Firebase Storage الخاص بك.";
+  if (!apiKey || apiKey === "YOUR_IMGBB_API_KEY_HERE") {
+    console.error('ImgBB API Key is missing or not configured in .env file.');
+    throw new Error('فشل تحميل الصورة: لم يتم تكوين خدمة تحميل الصور بشكل صحيح. (مفتاح API مفقود)');
+  }
+
+  const formData = new FormData();
+  formData.append('image', file);
+
+  try {
+    const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('ImgBB API Error:', errorData);
+      throw new Error(`فشل تحميل الصورة: ${errorData?.error?.message || response.statusText}`);
     }
 
-    // Log the detailed error for server-side debugging
-    console.error(`Firebase Storage Error Code: ${error.code}, Server Message: ${error.serverResponse}`);
-    console.error("User-facing error message being thrown:", userMessage);
-    throw new Error(userMessage);
+    const result = await response.json();
+    if (result.success && result.data && result.data.url) {
+      return result.data.url; // Use 'url' which is often the direct image link, or 'display_url'
+    } else {
+      console.error('ImgBB API Error: Unexpected response format', result);
+      throw new Error('فشل تحميل الصورة: استجابة غير متوقعة من خادم الصور.');
+    }
+  } catch (error: any) {
+    console.error("Full ImgBB Upload Error:", error);
+    throw new Error(`فشل تحميل الصورة: ${error.message || 'خطأ غير متوقع أثناء الاتصال بخادم الصور.'}`);
   }
 }
 
 async function deleteImage(imageUrl: string): Promise<void> {
-  if (!imageUrl || !imageUrl.startsWith('https://firebasestorage.googleapis.com/')) {
-    console.log('Invalid or non-Firebase Storage URL, skipping delete:', imageUrl);
+  // For ImgBB, deletion requires a specific delete_url provided upon upload.
+  // Since we are not storing it in this iteration, we cannot programmatically delete.
+  // This function will be a no-op for ImgBB URLs.
+  // If old Firebase URLs are encountered, this logic might need to be re-added or handled separately.
+  if (imageUrl && imageUrl.includes('i.ibb.co')) {
+    console.log('Automatic deletion for ImgBB URL is not supported without a delete_url:', imageUrl);
     return;
   }
-  const storage = getStorage();
-  try {
-    const imageRef = ref(storage, imageUrl);
-    await deleteObject(imageRef);
-  } catch (error: any) {
-    // Log error but don't fail the whole operation if image deletion fails
-    // (e.g., if the image was already deleted or permissions changed)
-    if (error.code === 'storage/object-not-found') {
-      console.warn('Image not found for deletion (might have been already deleted):', imageUrl);
-    } else {
-      console.error('Failed to delete image from storage:', imageUrl, error);
-    }
+  
+  // Example of how Firebase deletion was handled (can be removed if only ImgBB is used)
+  if (imageUrl && imageUrl.startsWith('https://firebasestorage.googleapis.com/')) {
+     console.warn('Attempting to delete a Firebase Storage URL, but image storage has been switched to ImgBB. This old image might not be deleted by this function anymore:', imageUrl);
+    // To re-enable Firebase deletion if needed:
+    // const storage = getStorage();
+    // try {
+    //   const imageRef = ref(storage, imageUrl);
+    //   await deleteObject(imageRef);
+    //   console.log('Successfully deleted old Firebase image:', imageUrl);
+    // } catch (error: any) {
+    //   if (error.code === 'storage/object-not-found') {
+    //     console.warn('Old Firebase image not found for deletion:', imageUrl);
+    //   } else {
+    //     console.error('Failed to delete old Firebase image:', imageUrl, error);
+    //   }
+    // }
+    return;
   }
+  console.log('Skipping delete for unrecognized image URL type:', imageUrl);
 }
 
 
@@ -131,8 +127,8 @@ export async function getCarTypesAdmin(): Promise<CarTypeOptionAdmin[]> {
 export async function addCarTypeAdmin(
   data: Omit<CarTypeOptionAdmin, 'id' | 'value' | 'imageUrl'> & { imageUrlInput: File }
 ): Promise<void> {
-  const imageUrl = await uploadImage(data.imageUrlInput, 'car-types');
-  const value = slugify(data.label); // Generate value from label
+  const imageUrl = await uploadImage(data.imageUrlInput, 'car-types'); // path 'car-types' is illustrative for ImgBB
+  const value = slugify(data.label);
   await addDoc(collection(db, CAR_TYPES_COLLECTION), { ...data, value, imageUrl });
 }
 
@@ -141,23 +137,23 @@ export async function updateCarTypeAdmin(
   data: Partial<Omit<CarTypeOptionAdmin, 'id' | 'value' | 'imageUrl'>> & { imageUrlInput?: File | null, currentImageUrl?: string }
 ): Promise<void> {
   let newImageUrl = data.currentImageUrl;
-  if (data.imageUrlInput) {
+  if (data.imageUrlInput) { // A new file is provided
     if (data.currentImageUrl) {
-      await deleteImage(data.currentImageUrl);
+      // We don't automatically delete from ImgBB here as we don't have the delete_url
+      console.log("A new image is being uploaded for car type, the old ImgBB image will not be automatically deleted:", data.currentImageUrl);
     }
-    newImageUrl = await uploadImage(data.imageUrlInput, 'car-types');
+    newImageUrl = await uploadImage(data.imageUrlInput, `car-types`);
   } else if (data.imageUrlInput === null && data.currentImageUrl) { 
-    // Explicitly clearing image by setting imageUrlInput to null
-    await deleteImage(data.currentImageUrl);
-    newImageUrl = ''; // Set to empty string or handle as needed
+    // Explicitly clearing image by setting imageUrlInput to null (meaning no new image, and old one should be considered "removed")
+    // Again, actual deletion from ImgBB is not done here.
+    console.log("Image cleared for car type. The ImgBB image will not be automatically deleted:", data.currentImageUrl);
+    newImageUrl = ''; // Set to empty string to represent no image
   }
-
 
   const { imageUrlInput, currentImageUrl, ...updateData } = data;
   const docRef = doc(db, CAR_TYPES_COLLECTION, id);
 
-  // If label changes, update value
-  if (updateData.label) {
+  if (updateData.label && updateData.label !== (await getDoc(docRef)).data()?.label) {
     (updateData as CarTypeOptionAdmin).value = slugify(updateData.label);
   }
   
@@ -165,26 +161,30 @@ export async function updateCarTypeAdmin(
 }
 
 export async function deleteCarTypeAdmin(id: string): Promise<void> {
-  // First, fetch the car type to get its image URL for deletion
-  const carTypeDoc = await getDoc(doc(db, CAR_TYPES_COLLECTION, id));
+  const carTypeDocRef = doc(db, CAR_TYPES_COLLECTION, id);
+  const carTypeDoc = await getDoc(carTypeDocRef);
+  let carTypeValue = id; // Fallback to id if value field isn't there or doc doesn't exist
+
   if (carTypeDoc.exists()) {
     const carTypeData = carTypeDoc.data() as CarTypeOptionAdmin;
+    carTypeValue = carTypeData.value || id; // Use carTypeData.value for querying models
     if (carTypeData.imageUrl) {
-      await deleteImage(carTypeData.imageUrl);
+      // Deletion from ImgBB is manual / not supported here
+      console.log("Deleting car type. Associated ImgBB image will not be automatically deleted:", carTypeData.imageUrl);
     }
   }
 
-  // Delete the car type document
-  await deleteDoc(doc(db, CAR_TYPES_COLLECTION, id));
+  await deleteDoc(carTypeDocRef);
 
   // Delete associated car models
-  const modelsQuery = query(collection(db, CAR_MODELS_COLLECTION), where('type', '==', id));
+  const modelsQuery = query(collection(db, CAR_MODELS_COLLECTION), where('type', '==', carTypeValue));
   const modelsSnapshot = await getDocs(modelsQuery);
   const batch = writeBatch(db);
-  modelsSnapshot.forEach(async (modelDoc) => {
+  modelsSnapshot.forEach((modelDoc) => {
     const modelData = modelDoc.data() as CarModelOptionAdmin;
     if (modelData.imageUrl) {
-      await deleteImage(modelData.imageUrl); // Delete model image
+      // Deletion from ImgBB is manual / not supported here
+       console.log("Deleting associated car model. ImgBB image will not be automatically deleted:", modelData.imageUrl);
     }
     batch.delete(modelDoc.ref);
   });
@@ -202,7 +202,7 @@ export async function addCarModelAdmin(
   data: Omit<CarModelOptionAdmin, 'id' | 'value' | 'imageUrl'> & { imageUrlInput: File }
 ): Promise<void> {
   const imageUrl = await uploadImage(data.imageUrlInput, `car-models/${data.type}`);
-  const value = slugify(data.label); // Generate value from label
+  const value = slugify(data.label);
   await addDoc(collection(db, CAR_MODELS_COLLECTION), { ...data, value, imageUrl });
 }
 
@@ -213,18 +213,18 @@ export async function updateCarModelAdmin(
   let newImageUrl = data.currentImageUrl;
   if (data.imageUrlInput) {
     if (data.currentImageUrl) {
-      await deleteImage(data.currentImageUrl);
+      console.log("A new image is being uploaded for car model, the old ImgBB image will not be automatically deleted:", data.currentImageUrl);
     }
     newImageUrl = await uploadImage(data.imageUrlInput, `car-models/${data.type || 'general'}`);
   } else if (data.imageUrlInput === null && data.currentImageUrl) {
-     await deleteImage(data.currentImageUrl);
+     console.log("Image cleared for car model. The ImgBB image will not be automatically deleted:", data.currentImageUrl);
      newImageUrl = '';
   }
 
   const { imageUrlInput, currentImageUrl, ...updateData } = data;
   const docRef = doc(db, CAR_MODELS_COLLECTION, id);
   
-  if (updateData.label) {
+  if (updateData.label && updateData.label !== (await getDoc(docRef)).data()?.label) {
     (updateData as CarModelOptionAdmin).value = slugify(updateData.label);
   }
 
@@ -232,49 +232,46 @@ export async function updateCarModelAdmin(
 }
 
 export async function deleteCarModelAdmin(id: string): Promise<void> {
-  const carModelDoc = await getDoc(doc(db, CAR_MODELS_COLLECTION, id));
+  const carModelDocRef = doc(db, CAR_MODELS_COLLECTION, id);
+  const carModelDoc = await getDoc(carModelDocRef);
   if (carModelDoc.exists()) {
     const carModelData = carModelDoc.data() as CarModelOptionAdmin;
     if (carModelData.imageUrl) {
-      await deleteImage(carModelData.imageUrl);
+      console.log("Deleting car model. Associated ImgBB image will not be automatically deleted:", carModelData.imageUrl);
     }
   }
-  await deleteDoc(doc(db, CAR_MODELS_COLLECTION, id));
+  await deleteDoc(carModelDocRef);
 }
 
 // --- For Booking Form (Client-side data fetching) ---
-// These functions are called from client components.
-// They don't need 'use server' if they are simple data fetches.
-// However, if they involved mutations or complex logic that should be server-side,
-// they would be server actions (or you'd call server actions from them).
 
 export async function getCarTypesForBooking(): Promise<Omit<CarTypeOptionAdmin, 'order' | 'dataAiHint' | 'id'>[]> {
   const q = query(collection(db, CAR_TYPES_COLLECTION), orderBy('order', 'asc'));
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => {
-    const data = doc.data();
+  return querySnapshot.docs.map(docSnapshot => { // Renamed doc to docSnapshot to avoid conflict
+    const data = docSnapshot.data();
     return {
-      value: doc.id, // Use Firestore ID as the value for selection
+      value: data.value, // Use the slugified 'value' field
       label: data.label,
       imageUrl: data.imageUrl,
-    } as Omit<CarTypeOptionAdmin, 'order' | 'dataAiHint' | 'id'>;
+    } as Omit<CarTypeOptionAdmin, 'order' | 'dataAiHint'| 'id'>;
   });
 }
 
-export async function getCarModelsForBooking(carTypeId: string): Promise<Omit<CarModelOptionAdmin, 'order' | 'dataAiHint' | 'type' | 'id'>[]> {
-  if (!carTypeId) return [];
+export async function getCarModelsForBooking(carTypeValue: string): Promise<Omit<CarModelOptionAdmin, 'order' | 'dataAiHint' | 'type'| 'id'>[]> {
+  if (!carTypeValue) return [];
   const q = query(
     collection(db, CAR_MODELS_COLLECTION),
-    where('type', '==', carTypeId), // Filter by car type ID
+    where('type', '==', carTypeValue), // Filter by car type's 'value' (slug)
     orderBy('order', 'asc')
   );
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => {
-    const data = doc.data();
+  return querySnapshot.docs.map(docSnapshot => { // Renamed doc to docSnapshot
+    const data = docSnapshot.data();
     return {
-      value: doc.id, // Use Firestore ID as the value
+      value: data.value, // Use the slugified 'value' field
       label: data.label,
       imageUrl: data.imageUrl,
-    } as Omit<CarModelOptionAdmin, 'order' | 'dataAiHint' | 'type' | 'id'>;
+    } as Omit<CarModelOptionAdmin, 'order' | 'dataAiHint' | 'type'| 'id'>;
   });
 }
