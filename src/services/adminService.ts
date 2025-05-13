@@ -17,15 +17,18 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
-// Firebase Storage imports are removed as we are switching to ImgBB
-// import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import type { AppConfig, CarTypeOptionAdmin, CarModelOptionAdmin } from '@/types/admin';
 import { slugify } from '@/lib/slugify'; // Helper for generating 'value'
+import crypto from 'crypto';
 
 const APP_CONFIG_COLLECTION = 'appConfig';
 const APP_CONFIG_DOC_ID = 'main';
 const CAR_TYPES_COLLECTION = 'carTypes';
 const CAR_MODELS_COLLECTION = 'carModels';
+
+const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
+const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY;
+const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
 
 // --- App Configuration ---
 export async function getAppConfig(): Promise<AppConfig | null> {
@@ -43,79 +46,107 @@ export async function getAppConfig(): Promise<AppConfig | null> {
 }
 
 export async function updateAppConfigAdmin(config: AppConfig): Promise<void> {
+  // If logoUrl is managed and uploaded via Cloudinary in the future, handle publicId here too
   const docRef = doc(db, APP_CONFIG_COLLECTION, APP_CONFIG_DOC_ID);
   await setDoc(docRef, config, { merge: true });
 }
 
+// --- Cloudinary Image Upload/Delete Helpers ---
 
-// --- Image Upload Helper (ImgBB) ---
-async function uploadImage(file: File, path?: string): Promise<string> { // path is optional for ImgBB
-  const apiKey = process.env.IMGBB_API_KEY;
+function generateSha1(data: string): string {
+  const hash = crypto.createHash('sha1');
+  hash.update(data);
+  return hash.digest('hex');
+}
 
-  if (!apiKey || apiKey === "YOUR_IMGBB_API_KEY_HERE") {
-    console.error('ImgBB API Key is missing or not configured in .env file.');
-    throw new Error('فشل تحميل الصورة: لم يتم تكوين خدمة تحميل الصور بشكل صحيح. (مفتاح API مفقود)');
+function generateSignature(paramsToSign: Record<string, string | number>, apiSecret: string): string {
+  const sortedParams = Object.keys(paramsToSign)
+    .sort()
+    .map(key => `${key}=${paramsToSign[key]}`)
+    .join('&');
+  return generateSha1(`${sortedParams}${apiSecret}`);
+}
+
+async function uploadImageToCloudinary(file: File, folder: string): Promise<{ secure_url: string; public_id: string }> {
+  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+    console.error('Cloudinary credentials are not configured in .env file.');
+    throw new Error('فشل تحميل الصورة: لم يتم تكوين خدمة تحميل الصور بشكل صحيح (بيانات اعتماد Cloudinary مفقودة).');
   }
 
+  const timestamp = Math.round(new Date().getTime() / 1000);
+  const paramsToSign = {
+    folder: folder,
+    timestamp: timestamp,
+  };
+  const signature = generateSignature(paramsToSign, CLOUDINARY_API_SECRET);
+
   const formData = new FormData();
-  formData.append('image', file);
+  formData.append('file', file);
+  formData.append('api_key', CLOUDINARY_API_KEY);
+  formData.append('timestamp', String(timestamp));
+  formData.append('signature', signature);
+  formData.append('folder', folder);
 
   try {
-    const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
       method: 'POST',
       body: formData,
     });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('ImgBB API Error:', errorData);
-      throw new Error(`فشل تحميل الصورة: ${errorData?.error?.message || response.statusText}`);
-    }
-
     const result = await response.json();
-    if (result.success && result.data && result.data.url) {
-      return result.data.url; // Use 'url' which is often the direct image link, or 'display_url'
+
+    if (!response.ok || result.error) {
+      console.error('Cloudinary API Error (upload):', result.error);
+      throw new Error(`فشل تحميل الصورة: ${result.error?.message || response.statusText}`);
+    }
+    if (result.secure_url && result.public_id) {
+      return { secure_url: result.secure_url, public_id: result.public_id };
+    }
+    console.error('Cloudinary API Error: Unexpected response format (upload)', result);
+    throw new Error('فشل تحميل الصورة: استجابة غير متوقعة من خادم صور Cloudinary.');
+  } catch (error: any) {
+    console.error("Full Cloudinary Upload Error:", error);
+    throw new Error(`فشل تحميل الصورة: ${error.message || 'خطأ غير متوقع أثناء الاتصال بخادم صور Cloudinary.'}`);
+  }
+}
+
+async function deleteImageFromCloudinary(publicId: string): Promise<void> {
+  if (!publicId) {
+    console.warn('No publicId provided for Cloudinary deletion.');
+    return;
+  }
+  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+    console.error('Cloudinary credentials are missing for deletion.');
+    return; // Do not throw, allow process to continue if deletion fails
+  }
+
+  const timestamp = Math.round(new Date().getTime() / 1000);
+  const paramsToSign = {
+    public_id: publicId,
+    timestamp: timestamp,
+  };
+  const signature = generateSignature(paramsToSign, CLOUDINARY_API_SECRET);
+
+  const formData = new FormData();
+  formData.append('public_id', publicId);
+  formData.append('api_key', CLOUDINARY_API_KEY);
+  formData.append('timestamp', String(timestamp));
+  formData.append('signature', signature);
+
+  try {
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/destroy`, {
+      method: 'POST',
+      body: formData,
+    });
+    const result = await response.json();
+    if (result.result !== 'ok' && result.result !== 'not found') {
+      console.error('Cloudinary API Error (delete):', result);
     } else {
-      console.error('ImgBB API Error: Unexpected response format', result);
-      throw new Error('فشل تحميل الصورة: استجابة غير متوقعة من خادم الصور.');
+      console.log('Cloudinary deletion status for', publicId, ':', result.result);
     }
   } catch (error: any) {
-    console.error("Full ImgBB Upload Error:", error);
-    throw new Error(`فشل تحميل الصورة: ${error.message || 'خطأ غير متوقع أثناء الاتصال بخادم الصور.'}`);
+    console.error('Error deleting image from Cloudinary:', publicId, error);
   }
 }
-
-async function deleteImage(imageUrl: string): Promise<void> {
-  // For ImgBB, deletion requires a specific delete_url provided upon upload.
-  // Since we are not storing it in this iteration, we cannot programmatically delete.
-  // This function will be a no-op for ImgBB URLs.
-  // If old Firebase URLs are encountered, this logic might need to be re-added or handled separately.
-  if (imageUrl && imageUrl.includes('i.ibb.co')) {
-    console.log('Automatic deletion for ImgBB URL is not supported without a delete_url:', imageUrl);
-    return;
-  }
-  
-  // Example of how Firebase deletion was handled (can be removed if only ImgBB is used)
-  if (imageUrl && imageUrl.startsWith('https://firebasestorage.googleapis.com/')) {
-     console.warn('Attempting to delete a Firebase Storage URL, but image storage has been switched to ImgBB. This old image might not be deleted by this function anymore:', imageUrl);
-    // To re-enable Firebase deletion if needed:
-    // const storage = getStorage();
-    // try {
-    //   const imageRef = ref(storage, imageUrl);
-    //   await deleteObject(imageRef);
-    //   console.log('Successfully deleted old Firebase image:', imageUrl);
-    // } catch (error: any) {
-    //   if (error.code === 'storage/object-not-found') {
-    //     console.warn('Old Firebase image not found for deletion:', imageUrl);
-    //   } else {
-    //     console.error('Failed to delete old Firebase image:', imageUrl, error);
-    //   }
-    // }
-    return;
-  }
-  console.log('Skipping delete for unrecognized image URL type:', imageUrl);
-}
-
 
 // --- Car Types ---
 export async function getCarTypesAdmin(): Promise<CarTypeOptionAdmin[]> {
@@ -125,66 +156,75 @@ export async function getCarTypesAdmin(): Promise<CarTypeOptionAdmin[]> {
 }
 
 export async function addCarTypeAdmin(
-  data: Omit<CarTypeOptionAdmin, 'id' | 'value' | 'imageUrl'> & { imageUrlInput: File }
+  data: Omit<CarTypeOptionAdmin, 'id' | 'value' | 'imageUrl' | 'publicId'> & { imageUrlInput: File }
 ): Promise<void> {
-  const imageUrl = await uploadImage(data.imageUrlInput, 'car-types'); // path 'car-types' is illustrative for ImgBB
+  const { secure_url, public_id } = await uploadImageToCloudinary(data.imageUrlInput, 'car_types');
   const value = slugify(data.label);
-  await addDoc(collection(db, CAR_TYPES_COLLECTION), { ...data, value, imageUrl });
+  await addDoc(collection(db, CAR_TYPES_COLLECTION), { ...data, value, imageUrl: secure_url, publicId: public_id });
 }
 
 export async function updateCarTypeAdmin(
   id: string,
-  data: Partial<Omit<CarTypeOptionAdmin, 'id' | 'value' | 'imageUrl'>> & { imageUrlInput?: File | null, currentImageUrl?: string }
+  data: Partial<Omit<CarTypeOptionAdmin, 'id' | 'value' | 'imageUrl' | 'publicId'>> & { imageUrlInput?: File | null, currentImageUrl?: string, currentPublicId?: string }
 ): Promise<void> {
   let newImageUrl = data.currentImageUrl;
+  let newPublicId = data.currentPublicId;
+
   if (data.imageUrlInput) { // A new file is provided
-    if (data.currentImageUrl) {
-      // We don't automatically delete from ImgBB here as we don't have the delete_url
-      console.log("A new image is being uploaded for car type, the old ImgBB image will not be automatically deleted:", data.currentImageUrl);
+    if (data.currentPublicId) {
+      await deleteImageFromCloudinary(data.currentPublicId);
     }
-    newImageUrl = await uploadImage(data.imageUrlInput, `car-types`);
-  } else if (data.imageUrlInput === null && data.currentImageUrl) { 
-    // Explicitly clearing image by setting imageUrlInput to null (meaning no new image, and old one should be considered "removed")
-    // Again, actual deletion from ImgBB is not done here.
-    console.log("Image cleared for car type. The ImgBB image will not be automatically deleted:", data.currentImageUrl);
-    newImageUrl = ''; // Set to empty string to represent no image
+    const uploadResult = await uploadImageToCloudinary(data.imageUrlInput, 'car_types');
+    newImageUrl = uploadResult.secure_url;
+    newPublicId = uploadResult.public_id;
+  } else if (data.imageUrlInput === null && data.currentPublicId) { 
+    // Explicitly clearing image
+    await deleteImageFromCloudinary(data.currentPublicId);
+    newImageUrl = '';
+    newPublicId = '';
   }
 
-  const { imageUrlInput, currentImageUrl, ...updateData } = data;
+  const { imageUrlInput, currentImageUrl, currentPublicId, ...updateData } = data;
   const docRef = doc(db, CAR_TYPES_COLLECTION, id);
 
-  if (updateData.label && updateData.label !== (await getDoc(docRef)).data()?.label) {
-    (updateData as CarTypeOptionAdmin).value = slugify(updateData.label);
+  const updatePayload: Partial<CarTypeOptionAdmin> = { ...updateData };
+  if (updateData.label) {
+    const currentDoc = await getDoc(docRef);
+    if (currentDoc.exists() && updateData.label !== currentDoc.data()?.label) {
+      updatePayload.value = slugify(updateData.label);
+    }
   }
+  updatePayload.imageUrl = newImageUrl;
+  updatePayload.publicId = newPublicId;
   
-  await updateDoc(docRef, { ...updateData, imageUrl: newImageUrl });
+  await updateDoc(docRef, updatePayload);
 }
 
 export async function deleteCarTypeAdmin(id: string): Promise<void> {
   const carTypeDocRef = doc(db, CAR_TYPES_COLLECTION, id);
   const carTypeDoc = await getDoc(carTypeDocRef);
-  let carTypeValue = id; // Fallback to id if value field isn't there or doc doesn't exist
+  let carTypeValue = id; 
+  let publicIdToDelete: string | undefined;
 
   if (carTypeDoc.exists()) {
     const carTypeData = carTypeDoc.data() as CarTypeOptionAdmin;
-    carTypeValue = carTypeData.value || id; // Use carTypeData.value for querying models
-    if (carTypeData.imageUrl) {
-      // Deletion from ImgBB is manual / not supported here
-      console.log("Deleting car type. Associated ImgBB image will not be automatically deleted:", carTypeData.imageUrl);
-    }
+    carTypeValue = carTypeData.value || id; 
+    publicIdToDelete = carTypeData.publicId;
   }
 
+  if (publicIdToDelete) {
+    await deleteImageFromCloudinary(publicIdToDelete);
+  }
   await deleteDoc(carTypeDocRef);
 
   // Delete associated car models
   const modelsQuery = query(collection(db, CAR_MODELS_COLLECTION), where('type', '==', carTypeValue));
   const modelsSnapshot = await getDocs(modelsQuery);
   const batch = writeBatch(db);
-  modelsSnapshot.forEach((modelDoc) => {
+  modelsSnapshot.forEach(async (modelDoc) => {
     const modelData = modelDoc.data() as CarModelOptionAdmin;
-    if (modelData.imageUrl) {
-      // Deletion from ImgBB is manual / not supported here
-       console.log("Deleting associated car model. ImgBB image will not be automatically deleted:", modelData.imageUrl);
+    if (modelData.publicId) {
+      await deleteImageFromCloudinary(modelData.publicId); // Await deletion for each model image
     }
     batch.delete(modelDoc.ref);
   });
@@ -199,36 +239,47 @@ export async function getCarModelsAdmin(): Promise<CarModelOptionAdmin[]> {
 }
 
 export async function addCarModelAdmin(
-  data: Omit<CarModelOptionAdmin, 'id' | 'value' | 'imageUrl'> & { imageUrlInput: File }
+  data: Omit<CarModelOptionAdmin, 'id' | 'value' | 'imageUrl' | 'publicId'> & { imageUrlInput: File }
 ): Promise<void> {
-  const imageUrl = await uploadImage(data.imageUrlInput, `car-models/${data.type}`);
+  const { secure_url, public_id } = await uploadImageToCloudinary(data.imageUrlInput, `car_models/${data.type || 'general'}`);
   const value = slugify(data.label);
-  await addDoc(collection(db, CAR_MODELS_COLLECTION), { ...data, value, imageUrl });
+  await addDoc(collection(db, CAR_MODELS_COLLECTION), { ...data, value, imageUrl: secure_url, publicId: public_id });
 }
 
 export async function updateCarModelAdmin(
   id: string,
-  data: Partial<Omit<CarModelOptionAdmin, 'id'| 'value' | 'imageUrl'>> & { imageUrlInput?: File | null, currentImageUrl?: string }
+  data: Partial<Omit<CarModelOptionAdmin, 'id'| 'value' | 'imageUrl'| 'publicId'>> & { imageUrlInput?: File | null, currentImageUrl?: string, currentPublicId?: string }
 ): Promise<void> {
   let newImageUrl = data.currentImageUrl;
+  let newPublicId = data.currentPublicId;
+
   if (data.imageUrlInput) {
-    if (data.currentImageUrl) {
-      console.log("A new image is being uploaded for car model, the old ImgBB image will not be automatically deleted:", data.currentImageUrl);
+    if (data.currentPublicId) {
+      await deleteImageFromCloudinary(data.currentPublicId);
     }
-    newImageUrl = await uploadImage(data.imageUrlInput, `car-models/${data.type || 'general'}`);
-  } else if (data.imageUrlInput === null && data.currentImageUrl) {
-     console.log("Image cleared for car model. The ImgBB image will not be automatically deleted:", data.currentImageUrl);
+    const uploadResult = await uploadImageToCloudinary(data.imageUrlInput, `car_models/${data.type || 'general'}`);
+    newImageUrl = uploadResult.secure_url;
+    newPublicId = uploadResult.public_id;
+  } else if (data.imageUrlInput === null && data.currentPublicId) {
+     await deleteImageFromCloudinary(data.currentPublicId);
      newImageUrl = '';
+     newPublicId = '';
   }
 
-  const { imageUrlInput, currentImageUrl, ...updateData } = data;
+  const { imageUrlInput, currentImageUrl, currentPublicId, ...updateData } = data;
   const docRef = doc(db, CAR_MODELS_COLLECTION, id);
   
-  if (updateData.label && updateData.label !== (await getDoc(docRef)).data()?.label) {
-    (updateData as CarModelOptionAdmin).value = slugify(updateData.label);
+  const updatePayload: Partial<CarModelOptionAdmin> = { ...updateData };
+  if (updateData.label) {
+    const currentDoc = await getDoc(docRef);
+    if (currentDoc.exists() && updateData.label !== currentDoc.data()?.label) {
+      updatePayload.value = slugify(updateData.label);
+    }
   }
+  updatePayload.imageUrl = newImageUrl;
+  updatePayload.publicId = newPublicId;
 
-  await updateDoc(docRef, { ...updateData, imageUrl: newImageUrl });
+  await updateDoc(docRef, updatePayload);
 }
 
 export async function deleteCarModelAdmin(id: string): Promise<void> {
@@ -236,8 +287,8 @@ export async function deleteCarModelAdmin(id: string): Promise<void> {
   const carModelDoc = await getDoc(carModelDocRef);
   if (carModelDoc.exists()) {
     const carModelData = carModelDoc.data() as CarModelOptionAdmin;
-    if (carModelData.imageUrl) {
-      console.log("Deleting car model. Associated ImgBB image will not be automatically deleted:", carModelData.imageUrl);
+    if (carModelData.publicId) {
+      await deleteImageFromCloudinary(carModelData.publicId);
     }
   }
   await deleteDoc(carModelDocRef);
@@ -245,33 +296,33 @@ export async function deleteCarModelAdmin(id: string): Promise<void> {
 
 // --- For Booking Form (Client-side data fetching) ---
 
-export async function getCarTypesForBooking(): Promise<Omit<CarTypeOptionAdmin, 'order' | 'dataAiHint' | 'id'>[]> {
+export async function getCarTypesForBooking(): Promise<Omit<CarTypeOptionAdmin, 'order' | 'dataAiHint' | 'id' | 'publicId'>[]> {
   const q = query(collection(db, CAR_TYPES_COLLECTION), orderBy('order', 'asc'));
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(docSnapshot => { // Renamed doc to docSnapshot to avoid conflict
+  return querySnapshot.docs.map(docSnapshot => { 
     const data = docSnapshot.data();
     return {
-      value: data.value, // Use the slugified 'value' field
+      value: data.value, 
       label: data.label,
       imageUrl: data.imageUrl,
-    } as Omit<CarTypeOptionAdmin, 'order' | 'dataAiHint'| 'id'>;
+    } as Omit<CarTypeOptionAdmin, 'order' | 'dataAiHint'| 'id' | 'publicId'>;
   });
 }
 
-export async function getCarModelsForBooking(carTypeValue: string): Promise<Omit<CarModelOptionAdmin, 'order' | 'dataAiHint' | 'type'| 'id'>[]> {
+export async function getCarModelsForBooking(carTypeValue: string): Promise<Omit<CarModelOptionAdmin, 'order' | 'dataAiHint' | 'type'| 'id' | 'publicId'>[]> {
   if (!carTypeValue) return [];
   const q = query(
     collection(db, CAR_MODELS_COLLECTION),
-    where('type', '==', carTypeValue), // Filter by car type's 'value' (slug)
+    where('type', '==', carTypeValue), 
     orderBy('order', 'asc')
   );
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(docSnapshot => { // Renamed doc to docSnapshot
+  return querySnapshot.docs.map(docSnapshot => { 
     const data = docSnapshot.data();
     return {
-      value: data.value, // Use the slugified 'value' field
+      value: data.value, 
       label: data.label,
       imageUrl: data.imageUrl,
-    } as Omit<CarModelOptionAdmin, 'order' | 'dataAiHint' | 'type'| 'id'>;
+    } as Omit<CarModelOptionAdmin, 'order' | 'dataAiHint' | 'type'| 'id' | 'publicId'>;
   });
 }

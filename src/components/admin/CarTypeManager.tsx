@@ -31,6 +31,7 @@ const carTypeFormSchema = z.object({
   label: z.string().min(1, 'اسم النوع (بالعربية) مطلوب').max(100, 'الاسم طويل جداً'),
   imageUrlInput: z.instanceof(FileList).optional(), // For new file uploads
   existingImageUrl: z.string().url().optional().or(z.literal('')), // For displaying/keeping existing image
+  existingPublicId: z.string().optional().or(z.literal('')), // For Cloudinary public_id
   order: z.coerce.number().min(0, 'الترتيب يجب أن يكون 0 أو أكبر'),
 }).refine(data => {
   const hasNewFile = data.imageUrlInput instanceof FileList && data.imageUrlInput.length > 0;
@@ -38,7 +39,7 @@ const carTypeFormSchema = z.object({
   return hasNewFile || hasExistingImage;
 }, {
   message: "الرجاء اختيار صورة جديدة أو التأكد من وجود صورة حالية.",
-  path: ["imageUrlInput"], // Associate error with the file input field
+  path: ["imageUrlInput"], 
 });
 
 
@@ -64,6 +65,7 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
     defaultValues: {
       label: '',
       existingImageUrl: '',
+      existingPublicId: '',
       order: 0,
     },
   });
@@ -71,7 +73,6 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
   const watchedImageUrlInput = watch('imageUrlInput');
   const watchedExistingImageUrl = watch('existingImageUrl');
   
-  // Destructure ref from register to merge with local fileInputRef
   const { ref: imageInputRegisterRef, ...imageInputProps } = register('imageUrlInput');
 
 
@@ -80,7 +81,7 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
       const file = watchedImageUrlInput[0];
       const previewUrl = URL.createObjectURL(file);
       setImagePreviewUrl(previewUrl);
-      return () => URL.revokeObjectURL(previewUrl); // Cleanup
+      return () => URL.revokeObjectURL(previewUrl); 
     } else if (watchedExistingImageUrl) {
       setImagePreviewUrl(watchedExistingImageUrl);
     } else {
@@ -93,7 +94,8 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
     setEditingCarType(carType);
     setValue('label', carType.label);
     setValue('existingImageUrl', carType.imageUrl || '');
-    setValue('imageUrlInput', undefined); // Clear file input
+    setValue('existingPublicId', carType.publicId || '');
+    setValue('imageUrlInput', undefined); 
     setValue('order', carType.order);
     setShowForm(true);
     setImagePreviewUrl(carType.imageUrl || null);
@@ -101,9 +103,10 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
   
   const handleClearImage = () => {
     setValue('imageUrlInput', undefined);
-    setValue('existingImageUrl', ''); // Indicate existing image should be cleared
+    setValue('existingImageUrl', ''); 
+    setValue('existingPublicId', '');
     if(fileInputRef.current) {
-        fileInputRef.current.value = ""; // Clear the file input visually
+        fileInputRef.current.value = ""; 
     }
     setImagePreviewUrl(null);
   };
@@ -114,6 +117,7 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
       label: '',
       imageUrlInput: undefined,
       existingImageUrl: '',
+      existingPublicId: '',
       order: defaultOrder,
     });
     setEditingCarType(null);
@@ -130,17 +134,16 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
         const imageFile = data.imageUrlInput && data.imageUrlInput.length > 0 ? data.imageUrlInput[0] : null;
 
         if (editingCarType) {
-          // The schema refinement already checks this, but an explicit check here can be clearer for user feedback
           if (!imageFile && !data.existingImageUrl) {
              toast({ title: 'خطأ في الصورة', description: 'يجب توفير صورة للمتابعة.', variant: 'destructive' });
              return;
           }
-          await updateCarTypeAdmin(editingCarType.id!, { // Use editingCarType.id (which is the Firestore doc ID)
+          await updateCarTypeAdmin(editingCarType.id!, { 
             label: data.label,
-            imageUrlInput: imageFile,
+            imageUrlInput: imageFile, // Pass the file or null
             currentImageUrl: editingCarType.imageUrl, 
+            currentPublicId: editingCarType.publicId, // Pass current publicId
             order: data.order,
-            // dataAiHint is removed
           });
           toast({ title: 'تم التحديث', description: `تم تحديث نوع السيارة: ${data.label}` });
         } else {
@@ -150,10 +153,8 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
           }
           await addCarTypeAdmin({
             label: data.label,
-            imageUrlInput: imageFile,
+            imageUrlInput: imageFile, // Must be a file for add
             order: data.order,
-            // dataAiHint is removed
-            // value (ID) is handled by the service
           });
           toast({ title: 'تمت الإضافة', description: `تمت إضافة نوع السيارة: ${data.label}` });
         }
@@ -173,7 +174,8 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
   const handleDelete = (carType: CarTypeOptionAdmin) => {
     startTransition(async () => {
       try {
-        await deleteCarTypeAdmin(carType.id!);
+        // deleteCarTypeAdmin in service will handle deleting image from Cloudinary using publicId
+        await deleteCarTypeAdmin(carType.id!); 
         toast({ title: 'تم الحذف', description: `تم حذف نوع السيارة: ${carType.label}` });
         router.refresh();
       } catch (error) {
@@ -195,6 +197,7 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
             label: '', 
             imageUrlInput: undefined,
             existingImageUrl: '',
+            existingPublicId: '',
             order: defaultOrder 
         });
     }
@@ -211,6 +214,7 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
               label: '', 
               imageUrlInput: undefined,
               existingImageUrl: '', 
+              existingPublicId: '',
               order: defaultOrder 
           });
           setImagePreviewUrl(null);
@@ -221,7 +225,6 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
       {showForm && (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 admin-form p-4 glass-card mb-6">
           <h3 className="text-lg font-medium">{editingCarType ? 'تعديل نوع السيارة' : 'إضافة نوع سيارة جديد'}</h3>
-          {/* ID Field Removed */}
           <div>
             <Label htmlFor="ct-label">الاسم (بالعربية)</Label>
             <Input id="ct-label" {...register('label')} />
@@ -259,13 +262,13 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
                 )}
             </div>
             <input type="hidden" {...register('existingImageUrl')} />
+            <input type="hidden" {...register('existingPublicId')} />
             {errors.imageUrlInput && <p className="text-sm text-destructive mt-1">{errors.imageUrlInput.message}</p>}
              {editingCarType && !imagePreviewUrl && !watchedImageUrlInput?.length && (
               <p className="text-xs text-muted-foreground mt-1">اترك حقل الملف فارغًا للاحتفاظ بالصورة الحالية.</p>
             )}
           </div>
 
-          {/* dataAiHint Field Removed */}
           <div>
             <Label htmlFor="ct-order">ترتيب العرض</Label>
             <Input id="ct-order" type="number" {...register('order')} />
@@ -288,7 +291,7 @@ export function CarTypeManager({ initialCarTypes }: CarTypeManagerProps) {
           <div key={carType.id} className="admin-item">
             <div className="flex items-center gap-4">
               {carType.imageUrl ? (
-                <Image src={carType.imageUrl} alt={carType.label} width={60} height={40} className="rounded object-cover" data-ai-hint={carType.dataAiHint || "car image"}/>
+                <Image src={carType.imageUrl} alt={carType.label} width={60} height={40} className="rounded object-cover" data-ai-hint={"car image"}/>
               ) : (
                 <div className="w-[60px] h-[40px] rounded bg-muted flex items-center justify-center text-xs text-muted-foreground">لا توجد صورة</div>
               )}

@@ -31,6 +31,7 @@ const carModelFormSchema = z.object({
   label: z.string().min(1, 'اسم الموديل (بالعربية) مطلوب').max(100, 'الاسم طويل جداً'),
   imageUrlInput: z.instanceof(FileList).optional(),
   existingImageUrl: z.string().url().optional().or(z.literal('')),
+  existingPublicId: z.string().optional().or(z.literal('')), // For Cloudinary public_id
   type: z.string().min(1, 'يجب اختيار نوع السيارة'),
   order: z.coerce.number().min(0, 'الترتيب يجب أن يكون 0 أو أكبر'),
 }).refine(data => {
@@ -65,6 +66,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
     defaultValues: {
       label: '',
       existingImageUrl: '',
+      existingPublicId: '',
       type: '',
       order: 0,
     },
@@ -92,6 +94,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
     setEditingCarModel(carModel);
     setValue('label', carModel.label);
     setValue('existingImageUrl', carModel.imageUrl || '');
+    setValue('existingPublicId', carModel.publicId || '');
     setValue('imageUrlInput', undefined);
     setValue('type', carModel.type);
     setValue('order', carModel.order);
@@ -102,6 +105,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
   const handleClearImage = () => {
     setValue('imageUrlInput', undefined);
     setValue('existingImageUrl', '');
+    setValue('existingPublicId', '');
     if(fileInputRef.current) {
         fileInputRef.current.value = "";
     }
@@ -114,6 +118,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
       label: '',
       imageUrlInput: undefined,
       existingImageUrl: '',
+      existingPublicId: '',
       type: allCarTypes[0]?.value || '',
       order: defaultOrder,
     });
@@ -135,13 +140,13 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
             toast({ title: 'خطأ في الصورة', description: 'يجب توفير صورة للمتابعة.', variant: 'destructive' });
             return;
           }
-          await updateCarModelAdmin(editingCarModel.id!, { // Use editingCarModel.id
+          await updateCarModelAdmin(editingCarModel.id!, { 
             label: data.label,
             imageUrlInput: imageFile,
             currentImageUrl: editingCarModel.imageUrl,
+            currentPublicId: editingCarModel.publicId, // Pass current publicId
             type: data.type,
             order: data.order,
-            // dataAiHint removed
           });
           toast({ title: 'تم التحديث', description: `تم تحديث موديل السيارة: ${data.label}` });
         } else {
@@ -151,11 +156,9 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
           }
           await addCarModelAdmin({
             label: data.label,
-            imageUrlInput: imageFile,
+            imageUrlInput: imageFile, // Must be a file for add
             type: data.type,
             order: data.order,
-            // dataAiHint removed
-            // value (ID) handled by service
           });
           toast({ title: 'تمت الإضافة', description: `تمت إضافة موديل السيارة: ${data.label}` });
         }
@@ -175,6 +178,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
   const handleDelete = (carModel: CarModelOptionAdmin) => {
     startTransition(async () => {
       try {
+        // deleteCarModelAdmin in service will handle deleting image from Cloudinary using publicId
         await deleteCarModelAdmin(carModel.id!);
         toast({ title: 'تم الحذف', description: `تم حذف موديل السيارة: ${carModel.label}` });
         router.refresh();
@@ -197,6 +201,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
             label: '',
             imageUrlInput: undefined,
             existingImageUrl: '',
+            existingPublicId: '',
             type: allCarTypes[0]?.value || '', 
             order: defaultOrder 
         });
@@ -214,6 +219,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
             label: '',
             imageUrlInput: undefined,
             existingImageUrl: '',
+            existingPublicId: '',
             type: allCarTypes[0]?.value || '',
             order: defaultOrder 
             });
@@ -230,7 +236,6 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
       {showForm && allCarTypes.length > 0 && (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 admin-form p-4 glass-card mb-6">
           <h3 className="text-lg font-medium">{editingCarModel ? 'تعديل موديل السيارة' : 'إضافة موديل سيارة جديد'}</h3>
-          {/* ID Field Removed */}
           <div>
             <Label htmlFor="cm-label">الاسم (بالعربية)</Label>
             <Input id="cm-label" {...register('label')} />
@@ -268,6 +273,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
                 )}
             </div>
             <input type="hidden" {...register('existingImageUrl')} />
+            <input type="hidden" {...register('existingPublicId')} />
             {errors.imageUrlInput && <p className="text-sm text-destructive mt-1">{errors.imageUrlInput.message}</p>}
             {editingCarModel && !imagePreviewUrl && !watchedImageUrlInput?.length && (
               <p className="text-xs text-muted-foreground mt-1">اترك حقل الملف فارغًا للاحتفاظ بالصورة الحالية.</p>
@@ -294,7 +300,6 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
             />
             {errors.type && <p className="text-sm text-destructive mt-1">{errors.type.message}</p>}
           </div>
-          {/* dataAiHint Field Removed */}
           <div>
             <Label htmlFor="cm-order">ترتيب العرض</Label>
             <Input id="cm-order" type="number" {...register('order')} />
@@ -317,7 +322,7 @@ export function CarModelManager({ initialCarModels, allCarTypes }: CarModelManag
           <div key={carModel.id} className="admin-item">
              <div className="flex items-center gap-4">
               {carModel.imageUrl ? (
-                <Image src={carModel.imageUrl} alt={carModel.label} width={60} height={40} className="rounded object-cover" data-ai-hint={carModel.dataAiHint || "car model image"}/>
+                <Image src={carModel.imageUrl} alt={carModel.label} width={60} height={40} className="rounded object-cover" data-ai-hint={"car model image"}/>
               ) : (
                  <div className="w-[60px] h-[40px] rounded bg-muted flex items-center justify-center text-xs text-muted-foreground">لا توجد صورة</div>
               )}
