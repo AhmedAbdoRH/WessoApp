@@ -21,7 +21,7 @@ import { OrderSummary } from "./steps/OrderSummary";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { getCarTypesForBooking, getCarModelsForBooking } from '@/services/adminService'; 
+import { getCarTypesForBooking, getCarModelsForBooking, getAppConfig } from '@/services/adminService'; 
 import type { CarTypeOptionAdmin } from '@/types/admin';
 
 
@@ -71,8 +71,8 @@ const BookingForm: FC = () => {
     resolver: zodResolver(bookingSchema),
     mode: "onChange", 
     defaultValues: {
-      carType: '',
-      carModel: '',
+      carType: '', // Removed default selection
+      carModel: '', // Removed default selection
       passengers: undefined as number | undefined,
       bags: undefined as number | undefined,      
       pickupLocation: { address: '', coordinates: undefined },
@@ -107,7 +107,7 @@ const BookingForm: FC = () => {
   // --- Memoization Hooks ---
   const steps: StepDefinition[] = useMemo(() => [
     { id: 'carType', component: CarTypeSelection, validationFields: ['carType'], autoAdvance: true, props: { carTypes: carTypes } },
-    { id: 'carModel', component: CarModelSelection, validationFields: ['carModel'], autoAdvance: true, props: { allCarTypes: carTypes } }, // autoAdvance: true
+    { id: 'carModel', component: CarModelSelection, validationFields: ['carModel'], autoAdvance: true, props: { allCarTypes: carTypes } },
     { id: 'passengers', component: PassengerSelection, validationFields: ['passengers'], autoAdvance: true, props: { selectionType: 'passengers' } },
     { id: 'bags', component: PassengerSelection, validationFields: ['bags'], autoAdvance: true, props: { selectionType: 'bags' } },
     { id: 'location', component: LocationSelection, validationFields: ['pickupLocation.address', 'pickupLocation.coordinates', 'dropoffLocation.address', 'dropoffLocation.coordinates'], props: { autoFocus: true } },
@@ -228,13 +228,15 @@ const BookingForm: FC = () => {
         const carTypeLabel = carTypes.find(ct => ct.value === data.carType)?.label || data.carType;
         
         let carModelLabel = data.carModel;
-        if (data.carModel.endsWith('-default') && data.carType) {
-            const carTypeName = carTypes.find(ct => ct.value === data.carType)?.label || data.carType;
-            carModelLabel = `الموديل القياسي (${carTypeName})`;
-        } else if (data.carType) {
+        if (data.carType) {
             const modelsForType = await getCarModelsForBooking(data.carType);
             const foundModel = modelsForType.find(m => m.value === data.carModel);
-            if (foundModel) carModelLabel = foundModel.label;
+            if (foundModel) {
+                carModelLabel = foundModel.label;
+            } else if (data.carModel.endsWith('-default')) { // Handle default model label if no specific models found
+                 const carTypeName = carTypes.find(ct => ct.value === data.carType)?.label || data.carType;
+                 carModelLabel = `الموديل القياسي (${carTypeName})`;
+            }
         }
 
 
@@ -318,7 +320,7 @@ const BookingForm: FC = () => {
           >
              <CurrentComponent
                 errors={errors} 
-                {...(shouldAutoAdvance && { onNext: handleNext })}
+                {...(shouldAutoAdvance && { onNext: handleNext })} // Pass onNext if autoAdvance is true
                 {...steps[currentStep].props} 
                 autoFocus={steps[currentStep].props?.autoFocus}
              />
@@ -350,7 +352,7 @@ const BookingForm: FC = () => {
                  {isSubmitting ? "جاري الإرسال..." : "تأكيد وإرسال"}
                </Button>
              ) : (
-               !shouldAutoAdvance && (
+               !shouldAutoAdvance && ( // Only show Next button if not auto-advancing
                   <Button
                     type="button"
                     onClick={handleNext}

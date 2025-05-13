@@ -24,11 +24,11 @@ export const getArabicCarTypeName = (
 
 interface CarModelSelectionProps {
   errors?: any;
-  // onNext is removed as this step will no longer auto-advance itself
+  onNext?: () => Promise<void> | void; // Added for auto-advancing
   allCarTypes: Pick<CarTypeOptionAdmin, 'value' | 'label'>[];
 }
 
-export const CarModelSelection: FC<CarModelSelectionProps> = ({ errors, allCarTypes }) => {
+export const CarModelSelection: FC<CarModelSelectionProps> = ({ errors, onNext, allCarTypes }) => {
   const { register, watch, setValue, getValues, formState } = useFormContext<BookingFormData>();
   const selectedCarType = watch('carType');
   const selectedCarModel = watch('carModel');
@@ -46,28 +46,21 @@ export const CarModelSelection: FC<CarModelSelectionProps> = ({ errors, allCarTy
         .finally(() => setIsLoading(false));
     } else {
       setAvailableModels([]);
+      // If carType is deselected, ensure carModel is also cleared
       if (getValues('carModel')) {
-        setValue('carModel', '', { shouldValidate: false, shouldDirty: true });
+        setValue('carModel', '', { shouldValidate: true, shouldDirty: true });
       }
     }
   }, [selectedCarType, setValue, getValues]);
 
-  useEffect(() => {
-    if (selectedCarType && !isLoading && availableModels.length === 0) {
-      const defaultModelValue = `${selectedCarType}-default`;
-      const currentModelInForm = getValues('carModel');
-
-      if (currentModelInForm !== defaultModelValue) {
-        setValue('carModel', defaultModelValue, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-      }
-      // Removed onNext call here. Advancement is handled by BookingForm's Next button.
-    }
-  }, [selectedCarType, isLoading, availableModels, setValue, getValues]);
+  // Removed useEffect that set a default model, to respect "no default selection"
 
 
   const handleSelect = async (value: string) => {
     setValue('carModel', value, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-    // Removed onNext call here.
+    if (onNext) { // Auto-advance if onNext is provided
+      await onNext();
+    }
   };
 
   if (!selectedCarType) {
@@ -88,15 +81,17 @@ export const CarModelSelection: FC<CarModelSelectionProps> = ({ errors, allCarTy
     );
   }
   
-  if (availableModels.length === 0 && selectedCarType) { 
-    const defaultModelValue = `${selectedCarType}-default`; 
+  if (availableModels.length === 0 && selectedCarType && !isLoading) { 
     const arabicCarTypeName = getArabicCarTypeName(selectedCarType, allCarTypes);
-
     return (
        <div className="space-y-4 text-center">
          <Label className="text-xl font-semibold text-foreground">موديل السيارة</Label>
-         <p className="text-muted-foreground">سيتم تعيين الموديل القياسي لنوع {arabicCarTypeName}.</p>
-          <input type="hidden" {...register('carModel')} value={defaultModelValue} />
+         <p className="text-muted-foreground">
+            لا توجد موديلات محددة متاحة حاليًا لنوع "{arabicCarTypeName}".
+            <br />
+            يرجى الرجوع واختيار نوع سيارة آخر أو التأكد من إضافة موديلات لهذا النوع في لوحة التحكم.
+         </p>
+           {/* carModel will remain empty, validation will trigger if user tries to proceed */}
            {formState.errors.carModel && (
               <p className="text-sm font-medium text-destructive mt-2">{formState.errors.carModel.message}</p>
           )}
@@ -163,3 +158,4 @@ export const CarModelSelection: FC<CarModelSelectionProps> = ({ errors, allCarTy
     </div>
   );
 };
+
