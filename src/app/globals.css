@@ -148,9 +148,9 @@ body {
 
 
 @layer components {
-  /* Glassmorphism card style - enhanced for fiery theme */
+  /* Glassmorphism card style - enhanced for fiery theme and more transparency */
   .glass-card {
-    @apply bg-card/60 dark:bg-card/75 backdrop-blur-lg border border-border/40 rounded-2xl shadow-2xl p-4 sm:p-6 transition-all duration-300 hover:shadow-primary/30 dark:hover:shadow-accent/40;
+    @apply bg-card/50 dark:bg-card/60 backdrop-blur-lg border border-border/30 rounded-2xl shadow-2xl p-4 sm:p-6 transition-all duration-300 hover:shadow-primary/30 dark:hover:shadow-accent/40;
   }
 
   /* Glassmorphism button style with gradient */
@@ -279,3 +279,4 @@ body {
 .input {
   background-color: transparent !important;
 }
+
