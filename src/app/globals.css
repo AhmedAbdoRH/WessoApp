@@ -1,72 +1,73 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 body {
-  font-family: 'Cairo', sans-serif; /* Explicitly use Cairo */
+  font-family: 'Cairo', sans-serif; /*  use Cairo */
 }
 
 @layer base {
   :root {
-    /* Light Theme variables - White base, Fiery Orange/Yellow/Red accents */
-    --background-light: 0 0% 98%;       /* Near White background */
-    --foreground-light: 20 10% 15%;     /* Dark Brown/Grey for text */
-    --card-light: 0 0% 100%;             /* White card base (opacity set by .glass-card) */
-    --card-foreground-light: 20 10% 15%;
+    /* Light Theme variables - Retaining previous light theme with mint/lemon */
+    --background-light: 0 0% 98%;       /* Near White */
+    --foreground-light: 20 14% 25%;     /* Dark Grey for text */
+    --card-light: 0 0% 100%;
+    --card-foreground-light: 20 14% 25%;
     --popover-light: 0 0% 100%;
-    --popover-foreground-light: 20 10% 15%;
-    --primary-light: 30 90% 58%;        /* Bright Fiery Orange */
-    --primary-foreground-light: 0 0% 100%; /* White text on Fiery Orange */
-    --secondary-light: 40 100% 92%;      /* Very Light Fiery Yellow */
-    --secondary-foreground-light: 40 100% 35%;
-    --muted-light: 45 100% 95%;          /* Extremely Light Fiery Yellow */
-    --muted-foreground-light: 45 50% 50%;
-    --accent-light: 40 95% 55%;          /* Bright Fiery Yellow-Orange */
-    --accent-foreground-light: 20 10% 15%;
-    --destructive-light: 0 80% 60%;      /* Bright Red */
+    --popover-foreground-light: 20 14% 25%;
+    --primary-light: 150 56% 58%;       /* Mint Green */
+    --primary-foreground-light: 0 0% 100%; /* White text on Mint */
+    --secondary-light: 60 100% 92%;      /* Very Light Lemon Yellow */
+    --secondary-foreground-light: 60 100% 35%;
+    --muted-light: 65 100% 95%;          /* Extremely Light Lemon Yellow */
+    --muted-foreground-light: 65 50% 50%;
+    --accent-light: 55 95% 60%;          /* Bright Lemon Yellow */
+    --accent-foreground-light: 20 14% 25%;
+    --destructive-light: 350 80% 60%;     /* Soft Red/Watermelon for destructive actions */
     --destructive-foreground-light: 0 0% 98%;
-    --border-light: 35 100% 85%;         /* Light Fiery Orange/Yellow border */
-    --input-light: 0 0% 100%;            /* White input base (opacity/style via .glass-input) */
-    --ring-light: 30 90% 58%;           /* Bright Fiery Orange for focus rings */
+    --border-light: 150 30% 85%;         /* Light Mint border */
+    --input-light: 0 0% 100%;
+    --ring-light: 150 56% 58%;           /* Mint Green for focus rings */
 
-    /* Button gradients for Light Theme */
-    --button-gradient-from-light: var(--destructive-light);
-    --button-gradient-to-light: var(--primary-light);
-    
-    /* Progress bar gradients for Light Theme */
-    --progress-gradient-from-light: var(--destructive-light);
-    --progress-gradient-to-light: var(--accent-light);
+    /* Button gradients for Light Theme (Mint to Lemon) */
+    --button-gradient-from-light: hsl(var(--primary-light));
+    --button-gradient-to-light: hsl(var(--accent-light));
+
+    /* Progress bar gradients for Light Theme (Mint to Lemon) */
+    --progress-gradient-from-light: hsl(var(--primary-light));
+    --progress-gradient-to-light: hsl(var(--accent-light));
 
 
-    /* Dark theme variables - Very Dark burnt brown-black background, Intense Fiery Orange/Yellow/Red accents */
-    --background: 22 30% 4%; /* Very Dark Burnt Brown/Black */
-    --foreground: 25 15% 95%;   /* Brighter Off-white/Very Light Beige text */
-    --card: 22 25% 8%;       /* Slightly Lighter Dark Burnt Brown Card */
+    /* Dark theme variables - Very Dark (near black) background, Fiery Yellow/Red accents */
+    --background: 20 10% 3%;        /* Very Dark Brown/Almost Black */
+    --foreground: 25 15% 95%;       /* Brighter Off-white/Very Light Beige text */
+    --card: 20 10% 8%;           /* Slightly Lighter Dark Brown Card */
     --card-foreground: 25 15% 95%;
-    --popover: 22 30% 4%;
+    --popover: 20 10% 4%;
     --popover-foreground: 25 15% 95%;
-    --primary: 28 100% 50%; /* Intense Fiery Orange */
+    --primary: 38 100% 48%;         /* Deep Fiery Yellow-Orange (used as primary fiery accent) */
     --primary-foreground: 0 0% 100%; /* White */
-    --secondary: 22 20% 12%; /* Darker Burnt Brown secondary */
+    --secondary: 20 10% 12%;        /* Darker Brown secondary */
     --secondary-foreground: 25 15% 95%;
-    --muted: 22 20% 12%;
-    --muted-foreground: 25 15% 70%; /* Adjusted for darker bg */
-    --accent: 38 100% 48%; /* Deep Fiery Yellow-Orange */
-    --accent-foreground: 0 0% 100%; /* White text for better contrast on fiery accent */
-    --destructive: 0 100% 50%; /* Pure Fiery Red */
+    --muted: 20 10% 12%;
+    --muted-foreground: 25 15% 70%;
+    --accent: 45 100% 50%;          /* Fiery Yellow */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 80% 45%;       /* Deeper Red (less "fiery" than before, more intense) */
     --destructive-foreground: 0 0% 98%;
-    --border: 22 20% 20%;    /* Slightly lighter border for contrast on dark bg */
-    --input: 22 20% 15%;     /* Slightly lighter input bg */
-    --ring: 38 100% 48%; /* Deep Fiery Yellow-Orange for focus rings */
-    
-    /* Button gradients for Dark Theme (Fiery Red to Fiery Orange) */
-    --button-gradient-from: var(--destructive);
-    --button-gradient-to: var(--primary);
+    --border: 20 10% 20%;
+    --input: 20 10% 15%;
+    --ring: 45 100% 50%;            /* Fiery Yellow for focus rings */
 
-    /* Progress bar gradients for Dark Theme */
-    --progress-gradient-from: var(--destructive);
-    --progress-gradient-to: var(--accent);
-    
+    /* Button gradients for Dark Theme (Deep Red to Fiery Yellow-Orange) */
+    --button-gradient-from: hsl(var(--destructive)); /* Deeper Red */
+    --button-gradient-to: hsl(var(--primary)); /* Fiery Yellow-Orange */
+
+    /* Progress bar gradients for Dark Theme (Deep Red to Fiery Yellow) */
+    --progress-gradient-from: hsl(var(--destructive));
+    --progress-gradient-to: hsl(var(--accent));
+
     --radius: 0.75rem; /* Rounded corners */
 
     /* Chart colors (can be adjusted) */
@@ -81,7 +82,7 @@ body {
     --sidebar-foreground: hsl(var(--foreground));
     --sidebar-primary: hsl(var(--primary));
     --sidebar-primary-foreground: hsl(var(--primary-foreground));
-    --sidebar-accent: hsl(var(--secondary)); 
+    --sidebar-accent: hsl(var(--secondary));
     --sidebar-accent-foreground: hsl(var(--secondary-foreground));
     --sidebar-border: hsl(var(--border));
     --sidebar-ring: hsl(var(--ring));
@@ -95,13 +96,13 @@ body {
     --card-foreground: var(--card-foreground-light);
     --popover: var(--popover-light);
     --popover-foreground: var(--popover-foreground-light);
-    --primary: var(--primary-light); 
+    --primary: var(--primary-light);
     --primary-foreground: var(--primary-foreground-light);
     --secondary: var(--secondary-light);
     --secondary-foreground: var(--secondary-foreground-light);
     --muted: var(--muted-light);
     --muted-foreground: var(--muted-foreground-light);
-    --accent: var(--accent-light); 
+    --accent: var(--accent-light);
     --accent-foreground: var(--accent-foreground-light);
     --destructive: var(--destructive-light);
     --destructive-foreground: var(--destructive-foreground-light);
@@ -121,28 +122,28 @@ body {
   * {
     @apply border-border;
   }
-  /* Enhanced dark theme body background with fiery accents */
+  /* Enhanced dark theme body background - very dark with hints of red and yellow */
   body {
-    @apply bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(var(--primary)/0.6)] to-[hsl(var(--destructive)/0.5)] text-foreground;
+    @apply bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(var(--destructive)/0.2)] to-[hsl(var(--accent)/0.15)] text-foreground;
     font-family: 'Cairo', sans-serif; /* Ensure Cairo font is applied */
   }
 
-  /* Light theme body background - Predominantly white */
+  /* Light theme body background - Predominantly white with mint/lemon accents */
   html.light body {
-    @apply bg-gradient-to-br from-[hsl(var(--background-light))] via-[hsl(var(--accent-light)/0.1)] to-[hsl(var(--primary-light)/0.05)] text-foreground; /* Subtle gradient for light theme */
+    @apply bg-gradient-to-br from-[hsl(var(--background-light))] via-[hsl(var(--accent-light)/0.08)] to-[hsl(var(--primary-light)/0.04)] text-foreground; /* Subtle gradient for light theme */
   }
 }
 
 /* Custom Progress Bar Keyframes */
 @keyframes outline-progress-anim {
-  from { outline-color: hsl(var(--progress-gradient-from) / 0.5); } 
-  50% { outline-color: hsl(var(--progress-gradient-to)); } 
+  from { outline-color: hsl(var(--progress-gradient-from) / 0.5); }
+  50% { outline-color: hsl(var(--progress-gradient-to)); }
   to { outline-color: hsl(var(--progress-gradient-from) / 0.5); }
 }
 
 @keyframes stripes-anim {
   from { background-position: 0 0; }
-  to { background-position: 2.5rem 0; } 
+  to { background-position: 2.5rem 0; }
 }
 
 
@@ -155,22 +156,22 @@ body {
   /* Glassmorphism button style with gradient */
   .glass-button {
     @apply bg-gradient-to-r from-[hsl(var(--button-gradient-from))] to-[hsl(var(--button-gradient-to))]
-           text-primary-foreground 
+           text-primary-foreground
            backdrop-blur-md
-           border border-transparent 
+           border border-transparent
            rounded-xl shadow-lg py-2.5 px-5
            transition-all duration-300
-           hover:brightness-110 hover:saturate-150 
-           hover:shadow-lg dark:hover:shadow-[0_0_15px_3px_hsl(var(--accent)/0.5)] 
+           hover:brightness-110 hover:saturate-150
+           hover:shadow-lg dark:hover:shadow-[0_0_15px_3px_hsl(var(--accent)/0.5)]
            active:scale-95
            disabled:opacity-60 disabled:cursor-not-allowed;
   }
-  
-   .glass-button.bg-primary { 
+
+   .glass-button.bg-primary {
      @apply text-primary-foreground;
    }
    .glass-button.bg-accent {
-     @apply text-accent-foreground; 
+     @apply text-accent-foreground;
    }
 
 
@@ -181,7 +182,7 @@ body {
 
   /* Glassmorphism radio button style (visual only, actual radio is hidden) */
   .glass-radio-card {
-      @apply glass-card p-3 sm:p-4 cursor-pointer hover:border-primary/50 dark:hover:border-accent/50; 
+      @apply glass-card p-3 sm:p-4 cursor-pointer hover:border-primary/50 dark:hover:border-accent/50;
   }
    .glass-radio-label {
       @apply ml-2 text-xs sm:text-sm font-medium text-foreground select-none cursor-pointer;
@@ -202,14 +203,14 @@ body {
   .admin-form input[type="number"],
   .admin-form select,
   .admin-form textarea {
-    @apply glass-input w-full p-2.5 mb-3 text-base; 
+    @apply glass-input w-full p-2.5 mb-3 text-base;
   }
   .admin-form textarea {
     @apply min-h-[100px];
   }
 
   .admin-form button[type="submit"] {
-    @apply glass-button; 
+    @apply glass-button;
   }
   .admin-item-list {
     @apply space-y-3;
@@ -221,7 +222,7 @@ body {
     @apply glass-button text-xs px-3 py-1.5 ml-2;
     @apply !bg-transparent border-muted-foreground/30 text-muted-foreground hover:!bg-muted/10 hover:text-foreground dark:hover:text-foreground;
   }
-  
+
   .admin-item-actions button.text-destructive {
      @apply !bg-gradient-to-r !from-[hsl(var(--destructive)/0.8)] !to-[hsl(var(--destructive)/0.6)] text-destructive-foreground border-destructive/50 hover:!brightness-110;
   }
@@ -229,7 +230,7 @@ body {
 
   .admin-prominent-button {
     @apply fixed bottom-6 right-6 p-3 rounded-full shadow-xl transition-transform duration-300 z-50 opacity-90 hover:opacity-100 hover:scale-105 active:scale-100;
-    @apply glass-button !p-3; 
+    @apply glass-button !p-3;
   }
 
   /* Custom Progress Bar Styles with Gradient */
@@ -237,7 +238,7 @@ body {
     @apply relative w-full overflow-hidden;
     height: 1.25rem; /* 20px */
     border-radius: 6px;
-    background-color: hsl(var(--muted)); 
+    background-color: hsl(var(--muted));
     box-shadow: inset 0.2rem 0.2rem 0.5rem hsl(var(--muted) / 0.7),
                 inset -0.2rem -0.2rem 0.5rem hsl(var(--border) / 0.7);
   }
@@ -245,11 +246,11 @@ body {
   .progress-bar { /* Applied to ProgressPrimitive.Indicator */
     @apply h-full w-full flex-1 transition-transform duration-500 ease-out;
     background-image: linear-gradient(to right, hsl(var(--progress-gradient-from)), hsl(var(--progress-gradient-to))); /* Gradient background */
-    
-    position: relative; 
+
+    position: relative;
   }
 
-  .progress-bar::before { 
+  .progress-bar::before {
     content: '';
     position: absolute;
     top: 0;
@@ -258,7 +259,7 @@ body {
     bottom: 0;
     background-image: linear-gradient(
       45deg,
-      hsla(var(--primary-foreground), 0.2) 25%, 
+      hsla(var(--primary-foreground), 0.2) 25%,
       transparent 25%,
       transparent 50%,
       hsla(var(--primary-foreground), 0.2) 50%,
@@ -266,15 +267,15 @@ body {
       transparent 75%,
       transparent
     );
-    background-size: 1.25rem 1.25rem; 
-    border-radius: 4px; 
-    animation: stripes-anim 1s linear infinite; 
-    box-shadow: inset 0.1rem 0.1rem 0.3rem hsla(var(--primary-foreground), 0.3), 
+    background-size: 1.25rem 1.25rem;
+    border-radius: 4px;
+    animation: stripes-anim 1s linear infinite;
+    box-shadow: inset 0.1rem 0.1rem 0.3rem hsla(var(--primary-foreground), 0.3),
                 inset -0.1rem -0.1rem 0.3rem hsla(0, 0%, 0%, 0.2);
   }
-} 
+}
 
 /* Override ShadCN default input background for our glass style */
-.input { 
-  background-color: transparent !important; 
+.input {
+  background-color: transparent !important;
 }
