@@ -36,6 +36,8 @@ export async function getAppConfig(): Promise<AppConfig | null> {
       return docSnap.data() as AppConfig;
     }
     // Return default config if none exists
+    // Note: logoUrl and logoPublicId fetched here are now ignored by src/app/page.tsx
+    // in favor of a hardcoded logo.
     return { appName: 'ClearRide', logoUrl: '', logoPublicId: '' };
   } catch (error) {
     console.error('Error fetching app config:', error);
@@ -48,55 +50,32 @@ export async function getAppConfig(): Promise<AppConfig | null> {
 
 export async function updateAppConfigAdmin(formData: FormData): Promise<void> {
   const appName = formData.get('appName') as string;
-  const logoFile = formData.get('logoFile') as File | null;
-  const removeLogoStr = formData.get('removeLogo') as string | null;
-  const removeLogo = removeLogoStr === 'true';
-  const currentLogoPublicId = formData.get('currentLogoPublicId') as string | null;
+
+  // Logo management related fields (logoFile, removeLogo, currentLogoPublicId) are no longer expected or handled.
+  // The app logo is now hardcoded in src/app/page.tsx.
+  // This function will only update the appName in Firestore.
+  // Existing logoUrl and logoPublicId in Firestore will remain untouched by this function,
+  // but they are effectively overridden by the hardcoded logo in the UI.
 
   try {
     const configUpdate: Partial<AppConfig> = { appName };
 
-    if (logoFile) {
-      // New logo uploaded
-      if (currentLogoPublicId) {
-        await deleteImageFromCloudinary(currentLogoPublicId).catch(e => console.warn("Failed to delete old app logo, continuing:", e instanceof Error ? e.message : String(e)));
-      }
-      const uploadResult = await uploadImageToCloudinary(logoFile, 'app_logos');
-      configUpdate.logoUrl = uploadResult.secure_url;
-      configUpdate.logoPublicId = uploadResult.public_id;
-    } else if (removeLogo) {
-      // User wants to remove the existing logo
-      if (currentLogoPublicId) {
-        await deleteImageFromCloudinary(currentLogoPublicId).catch(e => console.warn("Failed to delete app logo for removal, continuing:", e instanceof Error ? e.message : String(e)));
-      }
-      configUpdate.logoUrl = '';
-      configUpdate.logoPublicId = '';
-    } else {
-      // No new file and not removing, so keep existing if it's there
-      const existingConfig = await getAppConfig();
-      if (existingConfig?.logoUrl && existingConfig?.logoPublicId){
-        // Retain existing logo if no action is taken
-        configUpdate.logoUrl = existingConfig.logoUrl;
-        configUpdate.logoPublicId = existingConfig.logoPublicId;
-      } else {
-        // If there was no existing logo, ensure fields are empty
-        configUpdate.logoUrl = '';
-        configUpdate.logoPublicId = '';
-      }
-    }
+    // Cloudinary interactions for app logo are removed.
+    // Logo URL and Public ID are no longer set from here.
 
     const docRef = doc(db, APP_CONFIG_COLLECTION, APP_CONFIG_DOC_ID);
-    await setDoc(docRef, configUpdate, { merge: true });
+    await setDoc(docRef, configUpdate, { merge: true }); // Only appName will be merged/updated.
   } catch (error) {
     console.error('Error updating app config:', error);
     if (error instanceof Error) {
-        throw new Error(`Failed to update app config: ${error.message}`);
+        throw new Error(`Failed to update app config (app name only): ${error.message}`);
     }
-    throw new Error('An unknown error occurred while updating app config.');
+    throw new Error('An unknown error occurred while updating app config (app name only).');
   }
 }
 
 // --- Cloudinary Image Upload/Delete Helpers ---
+// These functions are still used by CarTypeManager and CarModelManager
 
 function generateSha1(data: string): string {
   const hash = crypto.createHash('sha1');

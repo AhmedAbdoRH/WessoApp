@@ -9,8 +9,8 @@ import ClientOnly from '@/components/ClientOnly';
 
 export default async function Home() {
   const appConfig = await getAppConfig();
-  const appName = appConfig?.appName || 'ClearRide'; // appName is still fetched for alt text and potential other uses
-  const logoUrl = appConfig?.logoUrl;
+  const appName = appConfig?.appName || 'ClearRide'; // appName is still fetched for alt text
+  const logoUrl = "https://el-wesam.com/logo-m.png"; // Hardcoded logo URL
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 md:p-12 lg:p-24 relative">

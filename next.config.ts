@@ -22,6 +22,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'el-wesam.com',
+        port: '',
+        pathname: '/**',
+      }
     ],
   },
 };
