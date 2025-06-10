@@ -116,7 +116,7 @@ export const CarModelSelection: FC<CarModelSelectionProps> = ({ errors, onNext, 
               className={cn(
                 'glass-card cursor-pointer transition-all duration-200 ease-in-out overflow-hidden',
                 selectedCarModel === model.value ? 'ring-2 ring-primary ring-offset-2 ring-offset-background/50 dark:ring-offset-black/50 shadow-lg' : 'ring-0 shadow-md hover:shadow-lg',
-                formState.errors.carModel ? 'border-destructive' : 'border-white/20 dark:border-black/20'
+                formState.errors.carModel ? 'border-destructive' : 'border-[hsl(var(--primary-light)/0.3)] dark:border-[hsl(var(--primary)/0.25)]'
               )}
               onClick={() => handleSelect(model.value)}
               role="radio"
@@ -158,4 +158,3 @@ export const CarModelSelection: FC<CarModelSelectionProps> = ({ errors, onNext, 
     </div>
   );
 };
-

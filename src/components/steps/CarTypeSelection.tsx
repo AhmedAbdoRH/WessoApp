@@ -1,3 +1,4 @@
+
 // src/components/steps/CarTypeSelection.tsx
 import type { FC } from 'react';
 import React from 'react';
@@ -56,7 +57,7 @@ export const CarTypeSelection: FC<CarTypeSelectionProps> = ({ errors, onNext, ca
               className={cn(
                 'glass-card cursor-pointer transition-all duration-200 ease-in-out overflow-hidden',
                 selectedCarType === car.value ? 'ring-2 ring-primary ring-offset-2 ring-offset-background/50 dark:ring-offset-black/50' : 'ring-0',
-                 errors?.carType ? 'border-destructive' : 'border-white/20 dark:border-black/20'
+                 errors?.carType ? 'border-destructive' : 'border-[hsl(var(--primary-light)/0.3)] dark:border-[hsl(var(--primary)/0.25)]'
               )}
               onClick={() => handleSelect(car.value)}
               role="radio"
