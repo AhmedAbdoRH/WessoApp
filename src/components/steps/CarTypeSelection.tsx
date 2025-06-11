@@ -14,7 +14,7 @@ import type { CarTypeOptionAdmin } from '@/types/admin'; // Using admin type for
 interface CarTypeSelectionProps {
   errors: any;
   onNext?: () => Promise<void> | void;
-  carTypes: Omit<CarTypeOptionAdmin, 'order' | 'dataAiHint'>[]; // Fetched from server
+  carTypes: Omit<CarTypeOptionAdmin, 'order' | 'id' | 'publicId'>[]; // Fetched from server
 }
 
 // This component is now a client component because it uses hooks (useFormContext)
@@ -74,7 +74,7 @@ export const CarTypeSelection: FC<CarTypeSelectionProps> = ({ errors, onNext, ca
                  className="sr-only"
                  aria-labelledby={`carType-label-${car.value}`}
                />
-              <CardHeader className="p-0 relative h-40 sm:h-48"> {/* Increased height */}
+              <CardHeader className="p-0 relative h-24 sm:h-28"> {/* Adjusted height to be shorter */}
                 <Image
                   src={car.imageUrl || "https://placehold.co/300x200.png"}
                   alt={car.label}

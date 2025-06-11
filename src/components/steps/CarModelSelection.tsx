@@ -32,7 +32,7 @@ export const CarModelSelection: FC<CarModelSelectionProps> = ({ errors, onNext, 
   const { register, watch, setValue, getValues, formState } = useFormContext<BookingFormData>();
   const selectedCarType = watch('carType');
   const selectedCarModel = watch('carModel');
-  const [availableModels, setAvailableModels] = useState<Omit<CarModelOptionAdmin, 'order' | 'dataAiHint' | 'type'>[]>([]);
+  const [availableModels, setAvailableModels] = useState<Omit<CarModelOptionAdmin, 'order' | 'dataAiHint' | 'type' | 'id' | 'publicId'>[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -133,7 +133,7 @@ export const CarModelSelection: FC<CarModelSelectionProps> = ({ errors, onNext, 
                  className="sr-only"
                  aria-labelledby={`carModel-label-${model.value}`}
                />
-              <CardHeader className="p-0 relative h-40 sm:h-48"> {/* Increased height */}
+              <CardHeader className="p-0 relative h-24 sm:h-28"> {/* Adjusted height to be shorter */}
                 <Image
                   src={model.imageUrl || "https://placehold.co/300x200.png"} 
                   alt={model.label}
