@@ -61,12 +61,12 @@ body {
     --ring: 45 100% 50%;            /* Fiery Yellow for focus rings */
 
     /* Button gradients for Dark Theme (Deep Red to Fiery Yellow-Orange) */
-    --button-gradient-from: hsl(0 80% 45%); /* Deeper Red from --destructive */
-    --button-gradient-to: hsl(38 100% 48%); /* Fiery Yellow-Orange from --primary */
+    --button-gradient-from: hsl(var(--destructive)); /* Deeper Red from --destructive */
+    --button-gradient-to: hsl(var(--primary)); /* Fiery Yellow-Orange from --primary */
 
     /* Progress bar gradients for Dark Theme (Deep Red to Fiery Yellow) */
-    --progress-gradient-from: hsl(0 80% 45%); /* Deeper Red */
-    --progress-gradient-to: hsl(45 100% 50%); /* Fiery Yellow */
+    --progress-gradient-from: hsl(var(--destructive)); /* Deeper Red */
+    --progress-gradient-to: hsl(var(--accent)); /* Fiery Yellow */
 
     --radius: 0.75rem; /* Rounded corners */
 
@@ -153,7 +153,7 @@ body {
 @layer components {
   /* Glassmorphism card style - further increased transparency */
   .glass-card {
-    @apply bg-card/10 dark:bg-card/15 backdrop-blur-lg border border-border/20 rounded-2xl shadow-2xl p-4 sm:p-6 transition-all duration-300 hover:shadow-primary/20 dark:hover:shadow-accent/30;
+    @apply bg-card/10 dark:bg-card/10 backdrop-blur-xl border border-border/15 rounded-2xl shadow-2xl p-4 sm:p-6 transition-all duration-300 hover:shadow-primary/20 dark:hover:shadow-accent/30;
   }
 
   /* Glassmorphism button style with gradient */
@@ -180,7 +180,7 @@ body {
 
    /* Glassmorphism input style - further increased transparency */
   .glass-input {
-    @apply bg-input/10 dark:bg-input/15 backdrop-blur-sm border border-border/20 rounded-xl shadow-inner text-foreground placeholder-muted-foreground focus:ring-ring focus:border-ring focus:bg-input/30 dark:focus:bg-input/30;
+    @apply bg-input/5 dark:bg-input/5 backdrop-blur-md border border-border/15 rounded-xl shadow-inner text-foreground placeholder-muted-foreground focus:ring-ring focus:border-ring focus:bg-input/20 dark:focus:bg-input/20;
    }
 
   /* Glassmorphism radio button style (visual only, actual radio is hidden) */
@@ -193,7 +193,7 @@ body {
 
   /* Admin specific styles if needed */
   .admin-section {
-    @apply glass-card mb-8; /* Will inherit increased transparency from .glass-card */
+    @apply glass-card mb-8; 
   }
   .admin-section-title {
     @apply text-2xl font-semibold text-foreground mb-6;
@@ -206,7 +206,7 @@ body {
   .admin-form input[type="number"],
   .admin-form select,
   .admin-form textarea {
-    @apply glass-input w-full p-2.5 mb-3 text-base; /* Will inherit increased transparency from .glass-input */
+    @apply glass-input w-full p-2.5 mb-3 text-base; 
   }
   .admin-form textarea {
     @apply min-h-[100px];
@@ -219,7 +219,7 @@ body {
     @apply space-y-3;
   }
   .admin-item {
-    @apply glass-card p-4 flex justify-between items-center; /* Removed explicit bg, will inherit from .glass-card */
+    @apply glass-card p-4 flex justify-between items-center; 
   }
   .admin-item-actions button {
     @apply glass-button text-xs px-3 py-1.5 ml-2;
@@ -286,3 +286,4 @@ body {
     
 
     
+

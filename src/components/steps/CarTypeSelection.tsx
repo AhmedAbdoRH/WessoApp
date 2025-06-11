@@ -74,9 +74,9 @@ export const CarTypeSelection: FC<CarTypeSelectionProps> = ({ errors, onNext, ca
                  className="sr-only"
                  aria-labelledby={`carType-label-${car.value}`}
                />
-              <CardHeader className="p-0 relative h-28 sm:h-32">
+              <CardHeader className="p-0 relative h-36 sm:h-44"> {/* Increased height */}
                 <Image
-                  src={car.imageUrl || "https://picsum.photos/300/200"} // Fallback image
+                  src={car.imageUrl || "https://placehold.co/300x200.png"}
                   alt={car.label}
                   layout="fill"
                   objectFit="cover"
