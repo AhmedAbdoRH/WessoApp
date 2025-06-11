@@ -61,12 +61,12 @@ body {
     --ring: 45 100% 50%;            /* Fiery Yellow for focus rings */
 
     /* Button gradients for Dark Theme (Deep Red to Fiery Yellow-Orange) */
-    --button-gradient-from: hsl(var(--destructive)); /* Deeper Red */
-    --button-gradient-to: hsl(var(--primary)); /* Fiery Yellow-Orange */
+    --button-gradient-from: hsl(0 80% 45%); /* Deeper Red from --destructive */
+    --button-gradient-to: hsl(38 100% 48%); /* Fiery Yellow-Orange from --primary */
 
     /* Progress bar gradients for Dark Theme (Deep Red to Fiery Yellow) */
-    --progress-gradient-from: hsl(var(--destructive));
-    --progress-gradient-to: hsl(var(--accent));
+    --progress-gradient-from: hsl(0 80% 45%); /* Deeper Red */
+    --progress-gradient-to: hsl(45 100% 50%); /* Fiery Yellow */
 
     --radius: 0.75rem; /* Rounded corners */
 
@@ -123,15 +123,18 @@ body {
     @apply border-border;
   }
   /* Enhanced dark theme body background - very dark with hints of red and yellow */
-  body {
+  html {
     @apply bg-gradient-to-br from-[hsl(var(--background))] via-[hsl(var(--destructive)/0.2)] to-[hsl(var(--accent)/0.15)] text-foreground;
     font-family: 'Cairo', sans-serif; /* Ensure Cairo font is applied */
   }
 
   /* Light theme body background - Predominantly white with mint/lemon accents */
-  html.light body {
+  html.light {
     @apply bg-gradient-to-br from-[hsl(var(--background-light))] via-[hsl(var(--accent-light)/0.08)] to-[hsl(var(--primary-light)/0.04)] text-foreground; /* Subtle gradient for light theme */
   }
+   body {
+     @apply bg-transparent; /* Make body transparent so html gradient shows through */
+   }
 }
 
 /* Custom Progress Bar Keyframes */
@@ -150,7 +153,7 @@ body {
 @layer components {
   /* Glassmorphism card style - enhanced for fiery theme and more transparency */
   .glass-card {
-    @apply bg-card/50 dark:bg-card/60 backdrop-blur-lg border border-border/30 rounded-2xl shadow-2xl p-4 sm:p-6 transition-all duration-300 hover:shadow-primary/30 dark:hover:shadow-accent/40;
+    @apply bg-card/40 dark:bg-card/50 backdrop-blur-lg border border-border/30 rounded-2xl shadow-2xl p-4 sm:p-6 transition-all duration-300 hover:shadow-primary/30 dark:hover:shadow-accent/40;
   }
 
   /* Glassmorphism button style with gradient */
@@ -177,7 +180,7 @@ body {
 
    /* Glassmorphism input style - works for both light and dark via CSS vars */
   .glass-input {
-    @apply bg-input/50 dark:bg-input/60 backdrop-blur-sm border border-border/30 rounded-xl shadow-inner text-foreground placeholder-muted-foreground focus:ring-ring focus:border-ring focus:bg-input/70 dark:focus:bg-input/70;
+    @apply bg-input/40 dark:bg-input/50 backdrop-blur-sm border border-border/30 rounded-xl shadow-inner text-foreground placeholder-muted-foreground focus:ring-ring focus:border-ring focus:bg-input/60 dark:focus:bg-input/60;
    }
 
   /* Glassmorphism radio button style (visual only, actual radio is hidden) */
@@ -190,7 +193,7 @@ body {
 
   /* Admin specific styles if needed */
   .admin-section {
-    @apply glass-card mb-8;
+    @apply glass-card mb-8; /* Already uses glass-card, will inherit new transparency */
   }
   .admin-section-title {
     @apply text-2xl font-semibold text-foreground mb-6;
@@ -203,7 +206,7 @@ body {
   .admin-form input[type="number"],
   .admin-form select,
   .admin-form textarea {
-    @apply glass-input w-full p-2.5 mb-3 text-base;
+    @apply glass-input w-full p-2.5 mb-3 text-base; /* Already uses glass-input */
   }
   .admin-form textarea {
     @apply min-h-[100px];
@@ -216,7 +219,7 @@ body {
     @apply space-y-3;
   }
   .admin-item {
-    @apply glass-card p-4 flex justify-between items-center bg-card/70 dark:bg-card/80;
+    @apply glass-card p-4 flex justify-between items-center bg-card/40 dark:bg-card/50; /* Matched glass-card transparency */
   }
   .admin-item-actions button {
     @apply glass-button text-xs px-3 py-1.5 ml-2;
@@ -280,3 +283,4 @@ body {
   background-color: transparent !important;
 }
 
+    
