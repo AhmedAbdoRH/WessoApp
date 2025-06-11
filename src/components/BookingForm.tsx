@@ -256,12 +256,6 @@ const BookingForm: FC = () => {
 
      } catch (error) {
        console.error("Error submitting booking to Firestore:", error);
-       // Removed toast message for Firestore submission failure, as WhatsApp submission will still be attempted.
-       // toast({
-       //   title: "خطأ في حفظ الطلب",
-       //   description: "تعذر حفظ طلب الحجز في قاعدة البيانات. سيتم الآن محاولة إرساله عبر واتساب.",
-       //   variant: "destructive",
-       // });
      }
 
      // Attempt to save customer contact info, only if it doesn't exist
@@ -280,20 +274,19 @@ const BookingForm: FC = () => {
         }
     } catch (contactError) {
         console.error("Error saving/checking customer contact to Firestore:", contactError);
-        // Optionally inform user or log more verbosely
     }
      
     const pickupMapLink = getGoogleMapsLinkFromAddress(data.pickupLocation.address);
     const dropoffMapLink = getGoogleMapsLinkFromAddress(data.dropoffLocation.address);
     
-    // Using actual emoji characters directly in the string
+    // Using actual emoji characters directly in the string - simplified some emojis
     const message = `
 طلب حجز جديد من Wesso.App
 ━━━━━━━━━━━━━━━━━━
 🔵 نوع الرحلة: ${carTypeLabelValue}
 🚗 موديل السيارة: ${carModelLabelValue}
-🧑‍🤝‍🧑 عدد الركاب: ${data.passengers}
-🎒 عدد الحقائب: ${data.bags}
+👥 عدد الركاب: ${data.passengers}
+💼 عدد الحقائب: ${data.bags}
 ━━━━━━━━━━━━━━━━━━
 📍 مكان الانطلاق: ${data.pickupLocation.address}${pickupMapLink ? `\n[رابط الخريطة](${pickupMapLink})` : ''}
 ━━━━━━━━━━━━━━━━━━
