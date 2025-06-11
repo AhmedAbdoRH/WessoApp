@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { FC } from 'react';
@@ -287,23 +286,22 @@ const BookingForm: FC = () => {
     const pickupMapLink = getGoogleMapsLinkFromAddress(data.pickupLocation.address);
     const dropoffMapLink = getGoogleMapsLinkFromAddress(data.dropoffLocation.address);
     
-   
-const message = `
+    // Using actual emoji characters directly in the string
+    const message = `
 طلب حجز جديد من Wesso.App
 ━━━━━━━━━━━━━━━━━━
-🔹 نوع الرحلة: ${carTypeLabelValue}
-🚘 موديل السيارة: ${carModelLabelValue}
-🧍‍♂️ عدد الركاب: ${data.passengers}
-🧳 عدد الحقائب: ${data.bags}
+🔵 نوع الرحلة: ${carTypeLabelValue}
+🚗 موديل السيارة: ${carModelLabelValue}
+🧑‍🤝‍🧑 عدد الركاب: ${data.passengers}
+🎒 عدد الحقائب: ${data.bags}
 ━━━━━━━━━━━━━━━━━━
 📍 مكان الانطلاق: ${data.pickupLocation.address}${pickupMapLink ? `\n[رابط الخريطة](${pickupMapLink})` : ''}
 ━━━━━━━━━━━━━━━━━━
 🏁 وجهة الوصول: ${data.dropoffLocation.address}${dropoffMapLink ? `\n[رابط الخريطة](${dropoffMapLink})` : ''}
 ━━━━━━━━━━━━━━━━━━
 👤 اسم العميل: ${data.firstName}
-📱 رقم هاتف العميل: ${data.phoneNumber}
+📞 رقم هاتف العميل: ${data.phoneNumber}
     `.trim().replace(/^\s+/gm, ''); // Use replace with /gm to remove leading spaces from all lines
-
 
     const encodedMessage = encodeURIComponent(message);
     const targetPhoneNumber = "201100434503"; 
@@ -404,4 +402,5 @@ const message = `
 };
 
 export default BookingForm;
+
 
