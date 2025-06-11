@@ -23,7 +23,6 @@ import { useToast } from "@/hooks/use-toast";
 import { getCarTypesForBooking, getCarModelsForBooking, checkPhoneNumberExists } from '@/services/adminService'; 
 import type { CarTypeOptionAdmin } from '@/types/admin';
 
-
 const locationDetailSchema = z.object({
     address: z.string().min(1, "العنوان مطلوب"),
     coordinates: z.object({
@@ -58,7 +57,7 @@ type StepDefinition = {
 };
 
 
-const BookingForm: FC = () => {
+const BookingForm FC = () => {
   // --- State Hooks ---
   const [currentStep, setCurrentStep] = useState(0);
   const [carTypes, setCarTypes] = useState<Omit<CarTypeOptionAdmin, 'order' | 'id' | 'publicId' >[]>([]);
@@ -109,9 +108,9 @@ const BookingForm: FC = () => {
     { id: 'carModel', component: CarModelSelection, validationFields: ['carModel'], autoAdvance: true, props: { allCarTypes: carTypes } },
     { id: 'passengers', component: PassengerSelection, validationFields: ['passengers'], autoAdvance: true, props: { selectionType: 'passengers' } },
     { id: 'bags', component: PassengerSelection, validationFields: ['bags'], autoAdvance: true, props: { selectionType: 'bags' } },
-    { id: 'location', component: LocationSelection, validationFields: ['pickupLocation.address', 'pickupLocation.coordinates', 'dropoffLocation.address', 'dropoffLocation.coordinates'], props: { autoFocus: true } },
+    { id: 'location', component: LocationSelection, validationFields: ['pickupLocation.address', 'pickupLocation.coordinates', 'dropoffLocation.address', 'dropoffLocation.coordinates'], props: { }},
     { id: 'firstName', component: FirstNameInput, validationFields: ['firstName'], props: { autoFocus: true } }, 
-    { id: 'phoneNumber', component: PhoneNumberInput, validationFields: ['phoneNumber'], props: { autoFocus: true } }, 
+    { id: 'phoneNumber', component:'], props: { autoFocus: true } }, 
     { id: 'summary', component: OrderSummary, validationFields: [], props: { allCarTypes: carTypes } }, 
   ], [carTypes]);
 
@@ -160,11 +159,7 @@ const BookingForm: FC = () => {
              const parts = firstErrorField.split('.');
              let errorObj: any = errors;
              for (const part of parts) {
-                 if (!errorObj) break;
-                 errorObj = errorObj[part];
-             }
-             
-             if (errorObj && errorObj.message) {
+                 if (!errorerrorObj && errorObj.message) {
                  errorMessage = typeof errorObj.message === 'string' ? errorObj.message : "الرجاء التحقق من الحقول المحددة.";
              } else if (errorObj?.address?.message) { 
                  errorMessage = typeof errorObj.address.message === 'string' ? errorObj.address.message : "الرجاء التحقق من حقول الموقع.";
@@ -281,19 +276,19 @@ const BookingForm: FC = () => {
     
     // Message without emojis, with professional formatting
     const message = `
-طلب حجز جديد من Wesso.App
-━━━━━━━━━━━━━━━━━━
-نوع الرحلة: ${carTypeLabelValue}
-موديل السيارة: ${carModelLabelValue}
-عدد الركاب: ${data.passengers}
-عدد الحقائب: ${data.bags}
-━━━━━━━━━━━━━━━━━━
-مكان الانطلاق: ${data.pickupLocation.address}${pickupMapLink ? `\n(رابط الخريطة: ${pickupMapLink})` : ''}
-━━━━━━━━━━━━━━━━━━
-وجهة الوصول: ${data.dropoffLocation.address}${dropoffMapLink ? `\n(رابط الخريطة: ${dropoffMapLink})` : ''}
-━━━━━━━━━━━━━━━━━━
-اسم العميل: ${data.firstName}
-رقم هاتف العميل: ${data.phoneNumber}
+ طلب حجز جديد من Wesso.App
+ ━━━━━━━━━━━━━━━━━━
+ نوع الرحلة: ${carTypeLabelValue}
+ موديل السيارة: ${carModelLabelValue}
+ عدد الركاب: ${data.passengers}
+ عدد الحقائب: ${data.bags}
+ ━━━━━━━━━━━━━━━━━━
+ مكان الانطلاق: ${data.pickupLocation.address}${pickupMapLink ? `\n(رابط الخريطة: ${pickupMapLink})` : ''}
+ ━━━━━━━━━━━━━━━━━━
+ وجهة الوصول: ${data.dropoffLocation.address}${dropoffMapLink ? `\n(رابط الخريطة: ${dropoffMapLink})` : ''}
+ ━━━━━━━━━━━━━━━━━━
+ اسم العميل: ${data.firstName}
+ رقم هاتف العميل: ${data.phoneNumber}
     `.trim().replace(/^\s+/gm, ''); // Use replace with /gm to remove leading spaces from all lines
 
     const encodedMessage = encodeURIComponent(message);
@@ -395,5 +390,3 @@ const BookingForm: FC = () => {
 };
 
 export default BookingForm;
-
-
