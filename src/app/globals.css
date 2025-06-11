@@ -39,26 +39,27 @@ body {
     --progress-gradient-to-light: hsl(var(--accent-light));
 
 
-    /* Dark theme variables - Very Dark (near black) background, Fiery Yellow/Red accents */
-    --background: 20 10% 8%;        /* Very Dark Brown/Almost Black - Made slightly lighter */
-    --foreground: 25 15% 95%;       /* Brighter Off-white/Very Light Beige text */
-    --card: 20 10% 12%;           /* Slightly Lighter Dark Brown Card - Made slightly lighter */
-    --card-foreground: 25 15% 95%;
-    --popover: 20 10% 4%;
-    --popover-foreground: 25 15% 95%;
-    --primary: 38 100% 48%;         /* Deep Fiery Yellow-Orange (used as primary fiery accent) */
+    /* Dark theme variables - Made Lighter */
+    --background: 20 10% 15%;        /* Was 8% - Lighter Dark Brown */
+    --foreground: 25 15% 90%;       /* Was 95% - Slightly dimmer text for contrast */
+    --card: 20 10% 18%;           /* Was 12% - Lighter Card Background */
+    --card-foreground: 25 15% 90%;  /* Was 95% */
+    --popover: 20 10% 10%;          /* Was 4% - Lighter Popover */
+    --popover-foreground: 25 15% 90%; /* Was 95% */
+    --primary: 38 100% 48%;         /* Deep Fiery Yellow-Orange (remains primary fiery accent) */
     --primary-foreground: 0 0% 100%; /* White */
-    --secondary: 20 10% 15%;        /* Darker Brown secondary - adjusted slightly to match new card bg */
-    --secondary-foreground: 25 15% 95%;
-    --muted: 20 10% 15%;             /* adjusted slightly to match new card bg */
-    --muted-foreground: 25 15% 70%;
-    --accent: 45 100% 50%;          /* Fiery Yellow */
+    --secondary: 20 10% 22%;        /* Was 15% - Lighter Secondary Background */
+    --secondary-foreground: 25 15% 90%; /* Was 95% */
+    --muted: 20 10% 22%;             /* Was 15% - Lighter Muted Background */
+    --muted-foreground: 25 15% 65%;  /* Was 70% */
+    --accent: 45 100% 50%;          /* Fiery Yellow (remains accent) */
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 80% 45%;       /* Deeper Red (less "fiery" than before, more intense) */
+    --destructive: 0 80% 45%;       /* Deeper Red (remains destructive) */
     --destructive-foreground: 0 0% 98%;
-    --border: 20 10% 20%;
-    --input: 20 10% 18%;             /* adjusted slightly for better contrast */
-    --ring: 45 100% 50%;            /* Fiery Yellow for focus rings */
+    --border: 20 10% 28%;           /* Was 20% - Lighter Border */
+    --input: 20 10% 25%;             /* Was 18% - Lighter Input Background */
+    --ring: 45 100% 50%;            /* Fiery Yellow for focus rings (remains accent) */
+
 
     /* Button gradients for Dark Theme (Deep Red to Fiery Yellow-Orange) */
     --button-gradient-from: hsl(var(--destructive)); /* Deeper Red from --destructive */
@@ -153,7 +154,7 @@ body {
 @layer components {
   /* Glassmorphism card style - further increased transparency */
   .glass-card {
-    @apply bg-card/10 dark:bg-card/10 backdrop-blur-xl border border-border/15 rounded-2xl shadow-2xl p-4 sm:p-6 transition-all duration-300 hover:shadow-primary/20 dark:hover:shadow-accent/30;
+    @apply bg-card/5 dark:bg-card/10 backdrop-blur-xl border border-border/15 rounded-2xl shadow-2xl p-4 sm:p-6 transition-all duration-300 hover:shadow-primary/20 dark:hover:shadow-accent/30;
   }
 
   /* Glassmorphism button style with gradient */
@@ -285,5 +286,6 @@ body {
     
 
     
+
 
 
