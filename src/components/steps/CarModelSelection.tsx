@@ -133,7 +133,7 @@ export const CarModelSelection: FC<CarModelSelectionProps> = ({ errors, onNext, 
                  className="sr-only"
                  aria-labelledby={`carModel-label-${model.value}`}
                />
-              <CardHeader className="p-0 relative h-36 sm:h-44"> {/* Increased height */}
+              <CardHeader className="p-0 relative h-40 sm:h-48"> {/* Increased height */}
                 <Image
                   src={model.imageUrl || "https://placehold.co/300x200.png"} 
                   alt={model.label}
