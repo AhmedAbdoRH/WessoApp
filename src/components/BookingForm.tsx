@@ -264,20 +264,24 @@ const BookingForm: FC = () => {
     const dropoffMapLink = getGoogleMapsLinkFromAddress(data.dropoffLocation.address);
 
     const message = `
-طلب حجز جديد من Wesso.App
-━━━━━━━━━━━━━━━━━━
-🔷 نوع الرحلة: ${carTypeLabelValue}
-🚗 موديل السيارة: ${carModelLabelValue}
-🧍‍♂️ عدد الركاب: ${data.passengers}
-🧳 عدد الحقائب: ${data.bags}
-━━━━━━━━━━━━━━━━━━
-📍 مكان الانطلاق: ${data.pickupLocation.address}${pickupMapLink ? `\nرابط الخريطة: ${pickupMapLink}` : ''}
-━━━━━━━━━━━━━━━━━━
-🏁 وجهة الوصول: ${data.dropoffLocation.address}${dropoffMapLink ? `\nرابط الخريطة: ${dropoffMapLink}` : ''}
-━━━━━━━━━━━━━━━━━━
-👤 اسم العميل: ${data.firstName}
-📞 رقم هاتف العميل: ${data.phoneNumber}
-    `.trim().replace(/^\s+/gm, '');
+📋 *طلب حجز جديد - Wesso.App*
+
+🚕 *الرحلة:* فان - تويوتا هايس
+🧑‍🤝‍🧑 *عدد الركاب:* 4
+🎒 *الحقائب:* 2
+
+🟢 *الانطلاق:*
+القاهرة
+📍 https://maps.google.com/?q=القاهرة
+
+🔴 *الوصول:*
+الإسكندرية
+📍 https://maps.google.com/?q=الإسكندرية
+
+🙍‍♂️ *العميل:* محمد أحمد  
+📞 *الهاتف:* 01001234567
+`.trim();
+
 
     const encodedMessage = encodeURIComponent(message);
     const targetPhoneNumber = "201100434503";
