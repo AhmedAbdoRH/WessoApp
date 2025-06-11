@@ -287,20 +287,21 @@ const BookingForm: FC = () => {
     const pickupMapLink = getGoogleMapsLinkFromAddress(data.pickupLocation.address);
     const dropoffMapLink = getGoogleMapsLinkFromAddress(data.dropoffLocation.address);
     
+    // Using Unicode escape sequences for emojis
     const message = `
 طلب حجز جديد من Wesso.App
 ━━━━━━━━━━━━━━━━━━
-💠 نوع الرحلة: ${carTypeLabelValue}
-🚗 موديل السيارة: ${carModelLabelValue}
-🧍‍♂️ عدد الركاب: ${data.passengers}
-🧳 عدد الحقائب: ${data.bags}
+\u{1F537} نوع الرحلة: ${carTypeLabelValue}
+\u{1F697} موديل السيارة: ${carModelLabelValue}
+\u{1F9CD}\u{200D}\u{2642}\u{FE0F} عدد الركاب: ${data.passengers}
+\u{1F9F3} عدد الحقائب: ${data.bags}
 ━━━━━━━━━━━━━━━━━━
-📍 مكان الانطلاق: ${data.pickupLocation.address}${pickupMapLink ? `\n[رابط الخريطة](${pickupMapLink})` : ''}
+\u{1F4CD} مكان الانطلاق: ${data.pickupLocation.address}${pickupMapLink ? `\n[رابط الخريطة](${pickupMapLink})` : ''}
 ━━━━━━━━━━━━━━━━━━
-🏁 وجهة الوصول: ${data.dropoffLocation.address}${dropoffMapLink ? `\n[رابط الخريطة](${dropoffMapLink})` : ''}
+\u{1F3C1} وجهة الوصول: ${data.dropoffLocation.address}${dropoffMapLink ? `\n[رابط الخريطة](${dropoffMapLink})` : ''}
 ━━━━━━━━━━━━━━━━━━
-👤 اسم العميل: ${data.firstName}
-📞 رقم هاتف العميل: ${data.phoneNumber}
+\u{1F464} اسم العميل: ${data.firstName}
+\u{1F4DE} رقم هاتف العميل: ${data.phoneNumber}
     `.trim().replace(/^\s+/gm, ''); // Use replace with /gm to remove leading spaces from all lines
 
     const encodedMessage = encodeURIComponent(message);
