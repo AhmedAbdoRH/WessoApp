@@ -288,15 +288,16 @@ const BookingForm: FC = () => {
     const dropoffMapLink = getGoogleMapsLinkFromAddress(data.dropoffLocation.address);
     
     const message = `
+طلب حجز جديد من Wesso.App
 ━━━━━━━━━━━━━━━━━━
 💠 نوع الرحلة: ${carTypeLabelValue}
 🚗 موديل السيارة: ${carModelLabelValue}
 🧍‍♂️ عدد الركاب: ${data.passengers}
 🧳 عدد الحقائب: ${data.bags}
 ━━━━━━━━━━━━━━━━━━
-📍 مكان الانطلاق: ${data.pickupLocation.address}${pickupMapLink ? `\nرابط الخريطة (${pickupMapLink})` : ''}
+📍 مكان الانطلاق: ${data.pickupLocation.address}${pickupMapLink ? `\n[رابط الخريطة](${pickupMapLink})` : ''}
 ━━━━━━━━━━━━━━━━━━
-🏁 وجهة الوصول: ${data.dropoffLocation.address}${dropoffMapLink ? `\nرابط الخريطة (${dropoffMapLink})` : ''}
+🏁 وجهة الوصول: ${data.dropoffLocation.address}${dropoffMapLink ? `\n[رابط الخريطة](${dropoffMapLink})` : ''}
 ━━━━━━━━━━━━━━━━━━
 👤 اسم العميل: ${data.firstName}
 📞 رقم هاتف العميل: ${data.phoneNumber}
@@ -401,3 +402,4 @@ const BookingForm: FC = () => {
 };
 
 export default BookingForm;
+
