@@ -20,8 +20,8 @@ export default async function Home() {
             <Image 
               src={logoUrl} 
               alt={`${appName} Logo`} 
-              width={88} // Increased logo size
-              height={88} // Increased logo size
+              width={120} // Increased logo size significantly
+              height={120} // Increased logo size significantly
               className="rounded-lg shadow-lg" // More prominent shadow and rounding
               data-ai-hint="app logo"
               priority // Prioritize loading the logo
