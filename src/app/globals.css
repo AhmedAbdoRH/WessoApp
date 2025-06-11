@@ -153,7 +153,7 @@ body {
 @layer components {
   /* Glassmorphism card style - further increased transparency */
   .glass-card {
-    @apply bg-card/20 dark:bg-card/25 backdrop-blur-lg border border-border/20 rounded-2xl shadow-2xl p-4 sm:p-6 transition-all duration-300 hover:shadow-primary/20 dark:hover:shadow-accent/30;
+    @apply bg-card/10 dark:bg-card/15 backdrop-blur-lg border border-border/20 rounded-2xl shadow-2xl p-4 sm:p-6 transition-all duration-300 hover:shadow-primary/20 dark:hover:shadow-accent/30;
   }
 
   /* Glassmorphism button style with gradient */
@@ -180,7 +180,7 @@ body {
 
    /* Glassmorphism input style - further increased transparency */
   .glass-input {
-    @apply bg-input/20 dark:bg-input/25 backdrop-blur-sm border border-border/20 rounded-xl shadow-inner text-foreground placeholder-muted-foreground focus:ring-ring focus:border-ring focus:bg-input/40 dark:focus:bg-input/40;
+    @apply bg-input/10 dark:bg-input/15 backdrop-blur-sm border border-border/20 rounded-xl shadow-inner text-foreground placeholder-muted-foreground focus:ring-ring focus:border-ring focus:bg-input/30 dark:focus:bg-input/30;
    }
 
   /* Glassmorphism radio button style (visual only, actual radio is hidden) */
