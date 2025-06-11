@@ -40,24 +40,24 @@ body {
 
 
     /* Dark theme variables - Made Lighter */
-    --background: 20 10% 15%;        /* Was 8% - Lighter Dark Brown */
+    --background: 20 10% 25%;        /* Was 15% - Even Lighter Dark Brown */
     --foreground: 25 15% 90%;       /* Was 95% - Slightly dimmer text for contrast */
-    --card: 20 10% 18%;           /* Was 12% - Lighter Card Background */
+    --card: 20 10% 28%;           /* Was 18% - Even Lighter Card Background */
     --card-foreground: 25 15% 90%;  /* Was 95% */
-    --popover: 20 10% 10%;          /* Was 4% - Lighter Popover */
+    --popover: 20 10% 20%;          /* Was 10% - Lighter Popover */
     --popover-foreground: 25 15% 90%; /* Was 95% */
     --primary: 38 100% 48%;         /* Deep Fiery Yellow-Orange (remains primary fiery accent) */
     --primary-foreground: 0 0% 100%; /* White */
-    --secondary: 20 10% 22%;        /* Was 15% - Lighter Secondary Background */
+    --secondary: 20 10% 32%;        /* Was 22% - Lighter Secondary Background */
     --secondary-foreground: 25 15% 90%; /* Was 95% */
-    --muted: 20 10% 22%;             /* Was 15% - Lighter Muted Background */
+    --muted: 20 10% 32%;             /* Was 22% - Lighter Muted Background */
     --muted-foreground: 25 15% 65%;  /* Was 70% */
     --accent: 45 100% 50%;          /* Fiery Yellow (remains accent) */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 80% 45%;       /* Deeper Red (remains destructive) */
     --destructive-foreground: 0 0% 98%;
-    --border: 20 10% 28%;           /* Was 20% - Lighter Border */
-    --input: 20 10% 25%;             /* Was 18% - Lighter Input Background */
+    --border: 20 10% 38%;           /* Was 28% - Lighter Border */
+    --input: 20 10% 35%;             /* Was 25% - Lighter Input Background */
     --ring: 45 100% 50%;            /* Fiery Yellow for focus rings (remains accent) */
 
 
@@ -289,3 +289,6 @@ body {
 
 
 
+
+
+    
