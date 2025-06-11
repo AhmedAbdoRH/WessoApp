@@ -40,24 +40,24 @@ body {
 
 
     /* Dark theme variables - Very Dark (near black) background, Fiery Yellow/Red accents */
-    --background: 20 10% 3%;        /* Very Dark Brown/Almost Black */
+    --background: 20 10% 8%;        /* Very Dark Brown/Almost Black - Made slightly lighter */
     --foreground: 25 15% 95%;       /* Brighter Off-white/Very Light Beige text */
-    --card: 20 10% 8%;           /* Slightly Lighter Dark Brown Card */
+    --card: 20 10% 12%;           /* Slightly Lighter Dark Brown Card - Made slightly lighter */
     --card-foreground: 25 15% 95%;
     --popover: 20 10% 4%;
     --popover-foreground: 25 15% 95%;
     --primary: 38 100% 48%;         /* Deep Fiery Yellow-Orange (used as primary fiery accent) */
     --primary-foreground: 0 0% 100%; /* White */
-    --secondary: 20 10% 12%;        /* Darker Brown secondary */
+    --secondary: 20 10% 15%;        /* Darker Brown secondary - adjusted slightly to match new card bg */
     --secondary-foreground: 25 15% 95%;
-    --muted: 20 10% 12%;
+    --muted: 20 10% 15%;             /* adjusted slightly to match new card bg */
     --muted-foreground: 25 15% 70%;
     --accent: 45 100% 50%;          /* Fiery Yellow */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 80% 45%;       /* Deeper Red (less "fiery" than before, more intense) */
     --destructive-foreground: 0 0% 98%;
     --border: 20 10% 20%;
-    --input: 20 10% 15%;
+    --input: 20 10% 18%;             /* adjusted slightly for better contrast */
     --ring: 45 100% 50%;            /* Fiery Yellow for focus rings */
 
     /* Button gradients for Dark Theme (Deep Red to Fiery Yellow-Orange) */
@@ -193,7 +193,7 @@ body {
 
   /* Admin specific styles if needed */
   .admin-section {
-    @apply glass-card mb-8; 
+    @apply glass-card mb-8;
   }
   .admin-section-title {
     @apply text-2xl font-semibold text-foreground mb-6;
@@ -206,7 +206,7 @@ body {
   .admin-form input[type="number"],
   .admin-form select,
   .admin-form textarea {
-    @apply glass-input w-full p-2.5 mb-3 text-base; 
+    @apply glass-input w-full p-2.5 mb-3 text-base;
   }
   .admin-form textarea {
     @apply min-h-[100px];
@@ -219,7 +219,7 @@ body {
     @apply space-y-3;
   }
   .admin-item {
-    @apply glass-card p-4 flex justify-between items-center; 
+    @apply glass-card p-4 flex justify-between items-center;
   }
   .admin-item-actions button {
     @apply glass-button text-xs px-3 py-1.5 ml-2;
@@ -282,8 +282,8 @@ body {
 .input {
   background-color: transparent !important;
 }
-
     
 
     
+
 
